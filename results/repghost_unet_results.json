@@ -1,0 +1,20 @@
+{
+    "ISIC2017": {
+        "model": "RepGhostUNet",
+        "dataset": "ISIC2017",
+        "mIoU": 79.44,
+        "DSC": 87.23,
+        "Sensitivity": 86.94,
+        "Specificity": 98.39,
+        "evaluation_date": "2025-10-28T23:04:09.705631"
+    },
+    "ISIC2018": {
+        "model": "RepGhostUNet",
+        "dataset": "ISIC2018",
+        "mIoU": 79.73,
+        "DSC": 87.43,
+        "Sensitivity": 87.35,
+        "Specificity": 97.51,
+        "evaluation_date": "2025-10-28T23:04:09.705643"
+    }
+}

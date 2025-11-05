@@ -1,0 +1,24 @@
+============================================================
+RepGhostUNet Evaluation Results
+============================================================
+
+Dataset: ISIC2017
+Model: RepGhostUNet
+Evaluation Date: 2025-10-28T23:04:09.705631
+------------------------------------------------------------
+mIoU (Mean Intersection over Union): 79.44%
+DSC (Dice Similarity Coefficient):   87.23%
+Sensitivity (Recall):                86.94%
+Specificity:                         98.39%
+
+
+Dataset: ISIC2018
+Model: RepGhostUNet
+Evaluation Date: 2025-10-28T23:04:09.705643
+------------------------------------------------------------
+mIoU (Mean Intersection over Union): 79.73%
+DSC (Dice Similarity Coefficient):   87.43%
+Sensitivity (Recall):                87.35%
+Specificity:                         97.51%
+
+
