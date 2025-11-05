@@ -9,6 +9,11 @@ import numpy as np
 import sys
 import os
 
+# Add parent directory to path to import ESEUNet from root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add scripts directory to path for loss_functions
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 # Import models and loss functions
 from ESEUNet import ESEUNet
 from loss_functions import CombinedDeepSupervisionLoss
@@ -117,12 +122,17 @@ class ISICSegmentationDataset(Dataset):
 
 base_dir_2018 = "/home/aminu_yusuf/msgunet/datasets/ISIC2018"
 
-# Training transforms with augmentation (cleaner with albumentations!)
+# Training transforms with composite data augmentations
+# Includes: random horizontal flipping, random scale, CLAHE contrast enhancement, and colour jittering
 transform_train = A.Compose([
     A.Resize(256, 256),
-    A.HorizontalFlip(p=0.5),
-    A.VerticalFlip(p=0.5), 
-    A.Rotate(limit=15, p=1.0),
+    A.HorizontalFlip(p=0.5),                              # Random horizontal flipping
+    A.VerticalFlip(p=0.5),
+    A.RandomScale(scale_limit=0.15, p=0.5),               # Random scale
+    A.Resize(256, 256),                                    # Resize back to 256x256 after scaling
+    A.Rotate(limit=15, p=0.5),
+    A.CLAHE(p=0.5),                                        # CLAHE: Contrast Limited Adaptive Histogram Equalization
+    A.ColorJitter(brightness=0.15, contrast=0.15, saturation=0.15, hue=0.05, p=0.5),  # Colour jittering
     A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ToTensorV2()
 ])
@@ -141,8 +151,8 @@ test_dataset_2018 = ISICSegmentationDataset(
     base_dir=base_dir_2018, split="test", transform=transform_test, seed=SEED
 )
 
-train_loader_2018 = DataLoader(train_dataset_2018, batch_size=8, shuffle=True, drop_last=True, worker_init_fn=seed_worker)
-test_loader_2018 = DataLoader(test_dataset_2018, batch_size=8, shuffle=False, worker_init_fn=seed_worker)
+train_loader_2018 = DataLoader(train_dataset_2018, batch_size=16, shuffle=True, drop_last=True, worker_init_fn=seed_worker)
+test_loader_2018 = DataLoader(test_dataset_2018, batch_size=16, shuffle=False, worker_init_fn=seed_worker)
 
 print("Train size:", len(train_dataset_2018))
 print("Test size:", len(test_dataset_2018))
@@ -157,7 +167,7 @@ model = ESEUNet(
     img_channels=3, 
     out_channels=1, 
     dim=128,           # Model Width (W)
-    depth=4,
+    depth=5,
     kernel_size=3,     # Kernel Size (K)
     dilation=2,        # Dilation Rate (DR)
     ratio=4,           # Reduction Rate (R)
