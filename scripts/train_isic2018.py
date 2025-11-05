@@ -9,8 +9,9 @@ import numpy as np
 import sys
 import os
 
-# Import RepGhostUNet from local experiments folder
-from repghost_unet import RepGhostUNet
+# Import models and loss functions
+from ESEUNet import ESEUNet
+from loss_functions import CombinedDeepSupervisionLoss
 
 from PIL import Image
 from tqdm import tqdm
@@ -150,9 +151,29 @@ print("Test size:", len(test_dataset_2018))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
 
-model = RepGhostUNet(n_channels=3, n_classes=1, base_ch=32, use_se=False, bilinear=False).to(device)
+# Initialize ESEUNet with deep supervision
+# Parameters: W=128, K=3, DR=2, R=4, CS=False
+model = ESEUNet(
+    img_channels=3, 
+    out_channels=1, 
+    dim=128,           # Model Width (W)
+    depth=4,
+    kernel_size=3,     # Kernel Size (K)
+    dilation=2,        # Dilation Rate (DR)
+    ratio=4,           # Reduction Rate (R)
+    pad=2,
+    shuffle=False,     # Channel Shuffle (CS)
+    deep_supervision=True,
+    deep_out=5
+).to(device)
 
-criterion = nn.BCEWithLogitsLoss()   # binary segmentation
+# Deep supervision loss with default lambdas: [0.5, 0.4, 0.3, 0.2, 0.1]
+criterion = CombinedDeepSupervisionLoss(
+    lambdas=[0.5, 0.4, 0.3, 0.2, 0.1],
+    alpha=0.25,
+    gamma=2.0,
+    dice_smooth=1.0
+)
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='min', factor=0.5, patience=3, min_lr=1e-5
@@ -212,7 +233,7 @@ if __name__ == "__main__":
     test_losses = []
 
     best_loss = float("inf")
-    best_model_path = os.path.join(weights_dir, "best_repghost_unet_isic2018.pth")
+    best_model_path = os.path.join(weights_dir, "best_eseunet_isic2018.pth")
 
     for epoch in range(n_epochs):
         train_loss = train_epoch(train_loader_2018, model, criterion, optimizer, device, epoch, n_epochs)
@@ -230,17 +251,18 @@ if __name__ == "__main__":
             print(f"✅ Saved best model at epoch {epoch+1} with Test Loss: {test_loss:.4f}")
 
     # Optionally save final model too
-    final_model_path = os.path.join(weights_dir, "repghost_unet_isic2018.pth")
+    final_model_path = os.path.join(weights_dir, "eseunet_isic2018.pth")
     torch.save(model.state_dict(), final_model_path)
     print("💾 Training complete, final model saved.")
-
-
 
     model.eval()
     imgs, masks = next(iter(test_loader_2018))
     imgs, masks = imgs.to(device), masks.to(device)
     with torch.no_grad():
-        preds = torch.sigmoid(model(imgs))
+        outputs = model(imgs)  # Returns list of predictions
+        # Use main output (first element from deep supervision)
+        main_output = outputs[0]
+        preds = torch.sigmoid(main_output)
 
     n_samples = min(6, imgs.shape[0])
     plt.figure(figsize=(12, n_samples * 3))
@@ -257,14 +279,14 @@ if __name__ == "__main__":
         plt.axis('off')
         # Prediction
         plt.subplot(n_samples, 3, idx * 3 + 3)
-        plt.title("RepGhost U-Net Prediction")
+        plt.title("ESEUNet Prediction")
         plt.imshow(preds[idx,0].cpu().numpy() > 0.5, cmap="gray")
         plt.axis('off')
 
     plt.tight_layout()
     plots_dir = os.path.join(project_root, "plots")
     os.makedirs(plots_dir, exist_ok=True)
-    plt.savefig(os.path.join(plots_dir, 'repghost_unet_predictions_grid_isic2018.png'))
+    plt.savefig(os.path.join(plots_dir, 'eseunet_predictions_grid_isic2018.png'))
     plt.show()
 
     # After training cell (after training loop and model saving)
@@ -273,10 +295,10 @@ if __name__ == "__main__":
     plt.plot(test_losses, label="Test Loss")
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.title("Loss Curve")
+    plt.title("ESEUNet - Loss Curve (ISIC2018)")
     plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(plots_dir, 'repghost_unet_loss_curve_isic2018.png'))
+    plt.savefig(os.path.join(plots_dir, 'eseunet_loss_curve_isic2018.png'))
     plt.show()
 
 
