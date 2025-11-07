@@ -238,7 +238,7 @@ if __name__ == "__main__":
     weights_dir = os.path.join(project_root, "weights")
     os.makedirs(weights_dir, exist_ok=True)
 
-    n_epochs = 100
+    n_epochs = 200
     train_losses = []
     test_losses = []
 
