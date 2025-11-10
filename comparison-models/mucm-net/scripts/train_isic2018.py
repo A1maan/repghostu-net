@@ -9,14 +9,14 @@ import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import ESEUNet from root
+# Add parent directory to path to import MUCM_Net from root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Add scripts directory to path for loss_functions
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import models and loss functions
-from ESEUNet import ESEUNet
-from loss_functions import CombinedDeepSupervisionLoss
+from archs_mucm_dev import MUCM_Net_8
+from loss_functions import MUCMNetDeepSupervisionLoss
 
 from PIL import Image
 from tqdm import tqdm
@@ -128,11 +128,7 @@ transform_train = A.Compose([
     A.Resize(256, 256),
     A.HorizontalFlip(p=0.5),                              # Random horizontal flipping
     A.VerticalFlip(p=0.5),
-    A.RandomScale(scale_limit=0.15, p=0.5),               # Random scale
-    A.Resize(256, 256),                                    # Resize back to 256x256 after scaling
     A.Rotate(limit=15, p=0.5),
-    A.CLAHE(p=0.5),                                        # CLAHE: Contrast Limited Adaptive Histogram Equalization
-    A.ColorJitter(brightness=0.15, contrast=0.15, saturation=0.15, hue=0.05, p=0.5),  # Colour jittering
     A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ToTensorV2()
 ])
@@ -151,8 +147,8 @@ test_dataset_2018 = ISICSegmentationDataset(
     base_dir=base_dir_2018, split="test", transform=transform_test, seed=SEED
 )
 
-train_loader_2018 = DataLoader(train_dataset_2018, batch_size=16, shuffle=True, drop_last=True, worker_init_fn=seed_worker)
-test_loader_2018 = DataLoader(test_dataset_2018, batch_size=16, shuffle=False, worker_init_fn=seed_worker)
+train_loader_2018 = DataLoader(train_dataset_2018, batch_size=8, shuffle=True, drop_last=True, worker_init_fn=seed_worker)
+test_loader_2018 = DataLoader(test_dataset_2018, batch_size=1, shuffle=False, worker_init_fn=seed_worker)
 
 print("Train size:", len(train_dataset_2018))
 print("Test size:", len(test_dataset_2018))
@@ -161,32 +157,22 @@ print("Test size:", len(test_dataset_2018))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
 
-# Initialize ESEUNet with deep supervision
-# Parameters: W=128, K=3, DR=2, R=4, CS=False
-model = ESEUNet(
-    img_channels=3, 
-    out_channels=1, 
-    dim=128,           # Model Width (W)
-    depth=5,
-    kernel_size=3,     # Kernel Size (K)
-    dilation=2,        # Dilation Rate (DR)
-    ratio=4,           # Reduction Rate (R)
-    pad=2,
-    shuffle=False,     # Channel Shuffle (CS)
-    deep_supervision=True,
-    deep_out=5
+# Initialize MUCM_Net_8 with deep supervision (5 stages)
+model = MUCM_Net_8(
+    num_classes=1,
+    input_channels=3,
+    deep_supervision=True
 ).to(device)
 
-# Deep supervision loss with default lambdas: [0.5, 0.4, 0.3, 0.2, 0.1]
-criterion = CombinedDeepSupervisionLoss(
-    lambdas=[0.5, 0.4, 0.3, 0.2, 0.1],
-    alpha=0.25,
-    gamma=2.0,
+# Deep supervision loss with lambdas: [0.1, 0.2, 0.3, 0.4, 0.5] for 5 stages
+# Loss = BCE + Dice + Square-Dice (sum of the three)
+criterion = MUCMNetDeepSupervisionLoss(
+    lambdas=[0.1, 0.2, 0.3, 0.4, 0.5],
     dice_smooth=1.0
 )
-optimizer = optim.Adam(model.parameters(), lr=1e-4)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, mode='min', factor=0.5, patience=3, min_lr=1e-5
+optimizer = optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.01)
+scheduler = optim.lr_scheduler.CosineAnnealingLR(
+    optimizer, T_max=50, eta_min=1e-5
 )
 
 
@@ -243,7 +229,7 @@ if __name__ == "__main__":
     test_losses = []
 
     best_loss = float("inf")
-    best_model_path = os.path.join(weights_dir, "best_eseunet_isic2018.pth")
+    best_model_path = os.path.join(weights_dir, "best_mucmnet_isic2018.pth")
 
     for epoch in range(n_epochs):
         train_loss = train_epoch(train_loader_2018, model, criterion, optimizer, device, epoch, n_epochs)
@@ -252,7 +238,10 @@ if __name__ == "__main__":
         test_loss = eval_epoch(test_loader_2018, model, criterion, device, epoch, n_epochs)
         test_losses.append(test_loss)
         
-        print(f"Epoch {epoch+1}/{n_epochs} - Train Loss: {train_loss:.4f} - Test Loss: {test_loss:.4f}")
+        # Step the CosineAnnealingLR scheduler
+        scheduler.step()
+        
+        print(f"Epoch {epoch+1}/{n_epochs} - Train Loss: {train_loss:.4f} - Test Loss: {test_loss:.4f} - LR: {scheduler.get_last_lr()[0]:.6f}")
         
         # Save best model
         if test_loss < best_loss:
@@ -261,7 +250,7 @@ if __name__ == "__main__":
             print(f"✅ Saved best model at epoch {epoch+1} with Test Loss: {test_loss:.4f}")
 
     # Optionally save final model too
-    final_model_path = os.path.join(weights_dir, "eseunet_isic2018.pth")
+    final_model_path = os.path.join(weights_dir, "mucmnet_isic2018.pth")
     torch.save(model.state_dict(), final_model_path)
     print("💾 Training complete, final model saved.")
 
@@ -287,16 +276,16 @@ if __name__ == "__main__":
         plt.title("Mask")
         plt.imshow(masks[idx,0].cpu().numpy(), cmap="gray")
         plt.axis('off')
-        # Prediction
+                # Prediction
         plt.subplot(n_samples, 3, idx * 3 + 3)
-        plt.title("ESEUNet Prediction")
+        plt.title("MUCM-Net Prediction")
         plt.imshow(preds[idx,0].cpu().numpy() > 0.5, cmap="gray")
         plt.axis('off')
 
     plt.tight_layout()
     plots_dir = os.path.join(project_root, "plots")
     os.makedirs(plots_dir, exist_ok=True)
-    plt.savefig(os.path.join(plots_dir, 'eseunet_predictions_grid_isic2018.png'))
+    plt.savefig(os.path.join(plots_dir, 'mucmnet_predictions_grid_isic2018.png'))
     plt.show()
 
     # After training cell (after training loop and model saving)
@@ -305,7 +294,7 @@ if __name__ == "__main__":
     plt.plot(test_losses, label="Test Loss")
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.title("ESEUNet - Loss Curve (ISIC2018)")
+    plt.title("MUCM-Net - Loss Curve (ISIC2018)")
     plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(plots_dir, 'eseunet_loss_curve_isic2018.png'))

@@ -11,11 +11,11 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
 # Add paths for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # eseunet dir
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # mucm-net dir
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # current scripts dir
 
-# Import ESEUNet
-from ESEUNet import ESEUNet
+# Import MUCM_Net
+from archs_mucm_dev import MUCM_Net_8
 
 # Set random seed
 SEED = 42
@@ -163,45 +163,30 @@ print(f"ISIC2018 test set size: {len(test_dataset_2018)}")
 # ========================
 
 print("\nLoading models...")
-# ESEUNet
-print("Loading ESEUNet...")
-eseunet_model = ESEUNet(
-    img_channels=3, 
-    out_channels=1, 
-    dim=128,
-    depth=5,
-    kernel_size=3,
-    dilation=2,
-    ratio=4,
-    pad=2,
-    shuffle=False,
-    deep_supervision=True,
-    deep_out=5
-).to(device)
-# Weights are in /comparison-models/eseunet/weights/
+# MUCM-Net-8
+print("Loading MUCM-Net-8...")
+# Weights are in /comparison-models/mucm-net/weights/
 weights_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "weights")
-eseunet_2017_path = os.path.join(weights_dir, "best_eseunet_isic2017.pth")
-eseunet_2018_path = os.path.join(weights_dir, "best_eseunet_isic2018.pth")
+mucmnet_2017_path = os.path.join(weights_dir, "best_mucmnet_isic2017.pth")
+mucmnet_2018_path = os.path.join(weights_dir, "best_mucmnet_isic2018.pth")
 
 # Load weights if available
 models_loaded = True
-eseunet_model_2017 = None
-eseunet_model_2018 = None
+mucmnet_model_2017 = None
+mucmnet_model_2018 = None
 
 # Create separate models for each dataset
-eseunet_model_2017 = ESEUNet(
-    img_channels=3, out_channels=1, dim=128, depth=5, kernel_size=3,
-    dilation=2, ratio=4, pad=2, shuffle=False, deep_supervision=True, deep_out=5
+mucmnet_model_2017 = MUCM_Net_8(
+    num_classes=1, input_channels=3, deep_supervision=True
 ).to(device)
 
-eseunet_model_2018 = ESEUNet(
-    img_channels=3, out_channels=1, dim=128, depth=5, kernel_size=3,
-    dilation=2, ratio=4, pad=2, shuffle=False, deep_supervision=True, deep_out=5
+mucmnet_model_2018 = MUCM_Net_8(
+    num_classes=1, input_channels=3, deep_supervision=True
 ).to(device)
 
 for model_name, model, path in [
-    ("ESEUNet ISIC2017", eseunet_model_2017, eseunet_2017_path),
-    ("ESEUNet ISIC2018", eseunet_model_2018, eseunet_2018_path),
+    ("MUCM-Net-8 ISIC2017", mucmnet_model_2017, mucmnet_2017_path),
+    ("MUCM-Net-8 ISIC2018", mucmnet_model_2018, mucmnet_2018_path),
 ]:
     if os.path.exists(path):
         try:
@@ -263,7 +248,7 @@ def visualize_predictions(model, loader, dataset_name, save_prefix):
         plt.title("Ground Truth", fontsize=10, fontweight='bold')
         plt.axis('off')
         
-        # 3. RepGhost prediction
+        # 3. MUCM-Net prediction
         plt.subplot(n_samples, 4, idx * 4 + 3)
         plt.imshow(pred, cmap='viridis')
         plt.title("Prediction (Raw)", fontsize=10, fontweight='bold')
@@ -281,11 +266,11 @@ def visualize_predictions(model, loader, dataset_name, save_prefix):
         plt.title("Overlay\n(Red=Pred, Blue=GT, Magenta=Both)", fontsize=9, fontweight='bold')
         plt.axis('off')
     
-    plt.suptitle(f'ESEUNet Predictions vs Ground Truth - {dataset_name}', 
+    plt.suptitle(f'MUCM-Net-8 Predictions vs Ground Truth - {dataset_name}', 
                  fontsize=14, fontweight='bold', y=0.995)
     plt.tight_layout()
     
-    save_path = f"{save_prefix}_repghost_predictions_vs_gt.png"
+    save_path = f"{save_prefix}_mucmnet_predictions_vs_gt.png"
     plt.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white')
     print(f"✅ Saved: {save_path}")
     plt.show()
@@ -301,8 +286,8 @@ print("="*70)
 
 print("\n📊 ISIC2017 Predictions vs Ground Truth...")
 try:
-    visualize_predictions(eseunet_model_2017, test_loader_2017, 
-                         "ISIC2017", "eseunet_isic2017")
+    visualize_predictions(mucmnet_model_2017, test_loader_2017, 
+                         "ISIC2017", "mucmnet_isic2017")
 except Exception as e:
     print(f"Error generating ISIC2017 visualizations: {e}")
     import traceback
@@ -310,8 +295,8 @@ except Exception as e:
 
 print("\n📊 ISIC2018 Predictions vs Ground Truth...")
 try:
-    visualize_predictions(eseunet_model_2018, test_loader_2018, 
-                         "ISIC2018", "eseunet_isic2018")
+    visualize_predictions(mucmnet_model_2018, test_loader_2018, 
+                         "ISIC2018", "mucmnet_isic2018")
 except Exception as e:
     print(f"Error generating ISIC2018 visualizations: {e}")
     import traceback

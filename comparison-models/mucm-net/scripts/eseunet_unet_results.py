@@ -3,39 +3,40 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
 
-# Results for ESEUNet on ISIC2017 and ISIC2018
+# Placeholder results for MUCM-Net on ISIC2017 and ISIC2018
+# These will be filled after training
 results = {
     "ISIC2017": {
-        "model": "ESEUNet",
+        "model": "MUCM-Net-8",
         "dataset": "ISIC2017",
-        "mIoU": 82.37,
-        "DSC": 89.21,
-        "Sensitivity": 88.86,
-        "Specificity": 98.58,
+        "mIoU": 0.0,  # To be filled after evaluation
+        "DSC": 0.0,   # To be filled after evaluation
+        "Sensitivity": 0.0,  # To be filled after evaluation
+        "Specificity": 0.0,  # To be filled after evaluation
         "evaluation_date": datetime.now().isoformat()
     },
     "ISIC2018": {
-        "model": "ESEUNet",
+        "model": "MUCM-Net-8",
         "dataset": "ISIC2018",
-        "mIoU": 80.12,
-        "DSC": 87.60,
-        "Sensitivity": 87.14,
-        "Specificity": 97.55,
+        "mIoU": 0.0,  # To be filled after evaluation
+        "DSC": 0.0,   # To be filled after evaluation
+        "Sensitivity": 0.0,  # To be filled after evaluation
+        "Specificity": 0.0,  # To be filled after evaluation
         "evaluation_date": datetime.now().isoformat()
     }
 }
 
 # Save results to JSON
-results_json_path = "eseunet_results.json"
+results_json_path = "mucmnet_results.json"
 with open(results_json_path, 'w') as f:
     json.dump(results, f, indent=4)
 print(f"✅ Results saved to {results_json_path}")
 
 # Create a detailed text report
-report_path = "eseunet_results.txt"
+report_path = "mucmnet_results.txt"
 with open(report_path, 'w') as f:
     f.write("=" * 60 + "\n")
-    f.write("ESEUNet Evaluation Results\n")
+    f.write("MUCM-Net-8 Evaluation Results\n")
     f.write("=" * 60 + "\n\n")
     
     for dataset_name, data in results.items():
@@ -68,11 +69,11 @@ for i, metric in enumerate(metrics_names):
     ax1.bar(x + i*width, values, width, label=metric, color=colors[i])
 
 ax1.set_ylabel('Score (%)', fontsize=12, fontweight='bold')
-ax1.set_title('RepGhostUNet: All Metrics Comparison', fontsize=14, fontweight='bold')
+ax1.set_title('MUCM-Net-8: All Metrics Comparison', fontsize=14, fontweight='bold')
 ax1.set_xticks(x + 1.5*width)
 ax1.set_xticklabels(datasets, fontsize=11)
 ax1.legend(fontsize=10)
-ax1.set_ylim([70, 102])
+ax1.set_ylim([0, 105])
 ax1.grid(axis='y', alpha=0.3)
 
 # Add value labels on bars
@@ -86,8 +87,8 @@ ax2 = plt.subplot(2, 2, 2)
 isic2017_metrics = [results['ISIC2017'][m] for m in metrics_names]
 bars2 = ax2.barh(metrics_names, isic2017_metrics, color=colors)
 ax2.set_xlabel('Score (%)', fontsize=12, fontweight='bold')
-ax2.set_title('RepGhostUNet on ISIC2017', fontsize=14, fontweight='bold')
-ax2.set_xlim([70, 102])
+ax2.set_title('MUCM-Net-8 on ISIC2017', fontsize=14, fontweight='bold')
+ax2.set_xlim([0, 105])
 ax2.grid(axis='x', alpha=0.3)
 
 # Add value labels
@@ -99,8 +100,8 @@ ax3 = plt.subplot(2, 2, 3)
 isic2018_metrics = [results['ISIC2018'][m] for m in metrics_names]
 bars3 = ax3.barh(metrics_names, isic2018_metrics, color=colors)
 ax3.set_xlabel('Score (%)', fontsize=12, fontweight='bold')
-ax3.set_title('RepGhostUNet on ISIC2018', fontsize=14, fontweight='bold')
-ax3.set_xlim([70, 102])
+ax3.set_title('MUCM-Net-8 on ISIC2018', fontsize=14, fontweight='bold')
+ax3.set_xlim([0, 105])
 ax3.grid(axis='x', alpha=0.3)
 
 # Add value labels
@@ -122,7 +123,7 @@ ax4.set_title('ISIC2017 vs ISIC2018 Performance', fontsize=14, fontweight='bold'
 ax4.set_xticks(x_pos)
 ax4.set_xticklabels(metrics_names, fontsize=11)
 ax4.legend(fontsize=11, loc='lower right')
-ax4.set_ylim([70, 102])
+ax4.set_ylim([0, 105])
 ax4.grid(axis='y', alpha=0.3)
 
 # Add value labels on bars
@@ -132,11 +133,11 @@ for bars in [bars_2017, bars_2018]:
         ax4.text(bar.get_x() + bar.get_width()/2., height + 0.5,
                 f'{height:.1f}%', ha='center', va='bottom', fontsize=9)
 
-plt.suptitle('ESEUNet Evaluation Results Summary', fontsize=16, fontweight='bold', y=0.995)
+plt.suptitle('MUCM-Net-8 Evaluation Results Summary', fontsize=16, fontweight='bold', y=0.995)
 plt.tight_layout()
 
 # Save the comprehensive plot
-plot_path = "eseunet_results_visualization.png"
+plot_path = "mucmnet_results_visualization.png"
 plt.savefig(plot_path, dpi=300, bbox_inches='tight')
 print(f"✅ Comprehensive visualization saved to {plot_path}")
 plt.show()

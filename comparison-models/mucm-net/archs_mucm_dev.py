@@ -17,11 +17,11 @@ import os
 import matplotlib.pyplot as plt
 from utils import *
 import timm
-from timm.models.layers import DropPath, to_2tuple, trunc_normal_
+from timm.layers import DropPath, to_2tuple, trunc_normal_
 import types
 
 from abc import ABCMeta, abstractmethod
-from mmcv.cnn import ConvModule
+# from mmcv.cnn import ConvModule
 import pdb
 
 __all__ = ['MUCM_Net','MUCM_Net_2','MUCM_Net_4','MUCM_Net_8']
@@ -36,7 +36,7 @@ __all__ = ['MUCM_Net','MUCM_Net_2','MUCM_Net_4','MUCM_Net_8']
 
 from mamba_ssm import Mamba
 
-from mamba_ssm import Mamba2Simple
+# from mamba_ssm import Mamba2Simple
 
 #from mamba_ssm import Mamba
 
@@ -102,11 +102,11 @@ import os
 import matplotlib.pyplot as plt
 from utils import *
 import timm
-from timm.models.layers import DropPath, to_2tuple, trunc_normal_
+from timm.layers import DropPath, to_2tuple, trunc_normal_
 import types
 
 from abc import ABCMeta, abstractmethod
-from mmcv.cnn import ConvModule
+# from mmcv.cnn import ConvModule
 import pdb
 
 

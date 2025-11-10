@@ -1,19 +1,20 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-# ESEUNet Results from ISIC2017 and ISIC2018 evaluations
+# MUCM-Net-8 Results from ISIC2017 and ISIC2018 evaluations
+# Placeholder values - to be filled after training and evaluation
 isic2017_results = {
-    'mIoU': 82.37,
-    'DSC': 89.21,
-    'Sensitivity': 88.86,
-    'Specificity': 98.58
+    'mIoU': 0.0,
+    'DSC': 0.0,
+    'Sensitivity': 0.0,
+    'Specificity': 0.0
 }
 
 isic2018_results = {
-    'mIoU': 80.12,
-    'DSC': 87.60,
-    'Sensitivity': 87.14,
-    'Specificity': 97.55
+    'mIoU': 0.0,
+    'DSC': 0.0,
+    'Sensitivity': 0.0,
+    'Specificity': 0.0
 }
 
 # Create comparison plot
@@ -44,7 +45,7 @@ add_value_labels(bars2)
 
 ax.set_xlabel('Metrics', fontsize=12, fontweight='bold')
 ax.set_ylabel('Performance (%)', fontsize=12, fontweight='bold')
-ax.set_title('ESEUNet Performance Comparison: ISIC2017 vs ISIC2018', fontsize=14, fontweight='bold', pad=20)
+ax.set_title('MUCM-Net-8 Performance Comparison: ISIC2017 vs ISIC2018', fontsize=14, fontweight='bold', pad=20)
 ax.set_xticks(x)
 ax.set_xticklabels(metrics, fontsize=11)
 ax.legend(fontsize=11)
@@ -55,13 +56,13 @@ ax.set_ylim(0, 105)
 ax.set_facecolor('#F8F9FA')
 
 plt.tight_layout()
-plt.savefig('eseunet_isic_comparison_metrics.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("📊 Comparison plot saved as 'eseunet_isic_comparison_metrics.png'")
+plt.savefig('mucmnet_isic_comparison_metrics.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("📊 Comparison plot saved as 'mucmnet_isic_comparison_metrics.png'")
 plt.show()
 
 # Print summary comparison
 print("\n" + "="*60)
-print("ESEUNet PERFORMANCE COMPARISON")
+print("MUCM-Net-8 PERFORMANCE COMPARISON")
 print("="*60)
 print("Metric          ISIC2017    ISIC2018    Difference")
 print("-" * 60)
@@ -73,11 +74,11 @@ print("="*60)
 
 # Additional analysis
 print("\n📈 ANALYSIS:")
-print("• ESEUNet shows excellent performance on both datasets")
-print("• Specificity is outstanding for both datasets")
-print("• DSC and mIoU show strong segmentation performance")
-print("• Consistent improvements from ISIC2017 to ISIC2018")
-print("• Strong segmentation results with deep supervision")
+print("• MUCM-Net-8 with 8-patch Mamba layers for efficient processing")
+print("• Training configuration: AdamW optimizer, CosineAnnealingLR scheduler")
+print("• Deep supervision loss: BCE + Dice + Square-Dice")
+print("• Stage weights: λᵢ = {0.1, 0.2, 0.3, 0.4, 0.5} for progressive stages")
+print("• Training: 200 epochs, batch size 8, learning rate 0.001")
 
 # Create a second plot showing performance differences
 fig2, ax2 = plt.subplots(figsize=(10, 6))
@@ -97,7 +98,7 @@ for bar, diff in zip(bars, differences):
                 fontsize=11, fontweight='bold')
 
 ax2.set_ylabel('Performance Difference (%)', fontsize=12, fontweight='bold')
-ax2.set_title('ISIC2017 vs ISIC2018 Performance Differences (ESEUNet)\n(Positive = ISIC2018 Better)', 
+ax2.set_title('ISIC2017 vs ISIC2018 Performance Differences (MUCM-Net-8)\n(Positive = ISIC2018 Better)', 
               fontsize=14, fontweight='bold', pad=20)
 ax2.grid(axis='y', alpha=0.3)
 ax2.axhline(y=0, color='black', linestyle='-', alpha=0.3)

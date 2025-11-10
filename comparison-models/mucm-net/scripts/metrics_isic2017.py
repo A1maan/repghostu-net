@@ -9,11 +9,11 @@ import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import ESEUNet
+# Add parent directory to path to import MUCM_Net
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import ESEUNet model
-from ESEUNet import ESEUNet
+# Import MUCM_Net model
+from archs_mucm_dev import MUCM_Net_8
 
 from PIL import Image
 from tqdm import tqdm
@@ -252,24 +252,16 @@ print("Test size:", len(test_dataset_2017))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
 
-# Initialize ESEUNet model with deep supervision
-model = ESEUNet(
-    img_channels=3, 
-    out_channels=1, 
-    dim=128,
-    depth=5,
-    kernel_size=3,
-    dilation=2,
-    ratio=4,
-    pad=2,
-    shuffle=False,
-    deep_supervision=True,
-    deep_out=5
+# Initialize MUCM_Net_8 model with deep supervision
+model = MUCM_Net_8(
+    num_classes=1,
+    input_channels=3,
+    deep_supervision=True
 ).to(device)
 
-# Load pretrained weights (weights are in comparison-models/eseunet/weights/)
+# Load pretrained weights (weights are in comparison-models/mucm-net/weights/)
 weights_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "weights")
-pretrained_weights_path = os.path.join(weights_dir, "best_eseunet_isic2017.pth")
+pretrained_weights_path = os.path.join(weights_dir, "best_mucmnet_isic2017.pth")
 if os.path.exists(pretrained_weights_path):
     print(f"Loading pretrained weights from: {pretrained_weights_path}")
     model.load_state_dict(torch.load(pretrained_weights_path, map_location=device))
@@ -355,7 +347,7 @@ plt.tight_layout()
 comparison_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 plots_dir = os.path.join(comparison_dir, "plots")
 os.makedirs(plots_dir, exist_ok=True)
-plt.savefig(os.path.join(plots_dir, 'eseunet_predictions_with_metrics_isic2017.png'), dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(plots_dir, 'mucmnet_predictions_with_metrics_isic2017.png'), dpi=300, bbox_inches='tight')
 plt.show()
 
 print("\n" + "="*60)

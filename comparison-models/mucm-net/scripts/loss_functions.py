@@ -146,3 +146,133 @@ class CombinedDeepSupervisionLoss(nn.Module):
     def set_lambdas(self, lambdas):
         """Customize lambda weights for each deep supervision level"""
         self.lambdas = lambdas
+
+
+class SquareDiceLoss(nn.Module):
+    """
+    Square Dice Loss for MUCM-Net
+    """
+    def __init__(self, smooth=1.0):
+        super(SquareDiceLoss, self).__init__()
+        self.smooth = smooth
+
+    def forward(self, inputs, targets):
+        """
+        Args:
+            inputs (torch.Tensor): Predictions from model, shape [B, C, H, W]
+            targets (torch.Tensor): Ground truth, shape [B, C, H, W] or [B, 1, H, W]
+        Returns:
+            torch.Tensor: Square Dice loss value
+        """
+        # Convert to probabilities
+        probs = torch.sigmoid(inputs)
+        
+        # Flatten
+        probs = probs.view(-1)
+        targets = targets.view(-1)
+        
+        # Square Dice coefficient
+        intersection = (probs * targets).sum()
+        dice_coef = (2.0 * intersection + self.smooth) / (
+            (probs ** 2).sum() + (targets ** 2).sum() + self.smooth
+        )
+        
+        return 1.0 - dice_coef
+
+
+class MUCMNetDeepSupervisionLoss(nn.Module):
+    """
+    Combined loss for MUCM-Net deep supervision strategy.
+    
+    Loss_i = BCE(GT_i, Output_i) + Dice(GT_i, Output_i) + SquareDice(GT_i, Output_i)
+    Loss_total = Σ(λ_i × Loss_i) for i=1 to 5
+    
+    Where:
+    - GT_i is resized to match Output_i spatial dimensions
+    - λ_i = [0.1, 0.2, 0.3, 0.4, 0.5] for progressively larger stages
+    - Output_i are predictions from different deep supervision levels
+    """
+    def __init__(self, lambdas=None, dice_smooth=1.0):
+        super(MUCMNetDeepSupervisionLoss, self).__init__()
+        self.bce_loss = nn.BCEWithLogitsLoss()
+        self.dice_loss = DiceLoss(smooth=dice_smooth)
+        self.square_dice_loss = SquareDiceLoss(smooth=dice_smooth)
+        
+        # Default lambda values: [0.1, 0.2, 0.3, 0.4, 0.5] for 5 stages
+        if lambdas is None:
+            self.lambdas = [0.1, 0.2, 0.3, 0.4, 0.5]
+        else:
+            self.lambdas = lambdas
+
+    def forward(self, outputs, gt):
+        """
+        Args:
+            outputs: Can be either:
+                    - tuple: ((outtpre0, outtpre1, outtpre2, outtpre3, outtpre4), final_out)
+                    - list: List of predictions from deep supervision heads
+            gt (torch.Tensor): Ground truth, shape [B, 1, H, W]
+        Returns:
+            torch.Tensor: Combined weighted loss
+            
+        Formula: Group_Loss = Loss_Output + Σ(λ_i × Loss_Stage_i) for i=1 to 5
+        """
+        # Handle tuple format from MUCM-Net
+        if isinstance(outputs, tuple):
+            # outputs is ((outtpre0, outtpre1, outtpre2, outtpre3, outtpre4), final_out)
+            deep_supervision_outputs, final_output = outputs
+        else:
+            # For list format: assume last element is final output
+            deep_supervision_outputs = outputs[:-1]
+            final_output = outputs[-1]
+        
+        total_loss = 0.0
+        
+        # Calculate loss for final output (weight = 1.0, unweighted)
+        _, _, h_out, w_out = final_output.shape
+        gt_resized = F.interpolate(
+            gt,
+            size=(h_out, w_out),
+            mode='nearest'
+        )
+        
+        bce_final = self.bce_loss(final_output, gt_resized)
+        dice_final = self.dice_loss(final_output, gt_resized)
+        square_dice_final = self.square_dice_loss(final_output, gt_resized)
+        loss_output = bce_final + dice_final + square_dice_final
+        total_loss += loss_output  # Weight = 1.0
+        
+        # Calculate losses for intermediate stages with lambda weights
+        for i, output in enumerate(deep_supervision_outputs):
+            # Get lambda for this stage: [0.1, 0.2, 0.3, 0.4, 0.5]
+            lambda_i = self.lambdas[i % len(self.lambdas)]
+            
+            # Get output spatial size
+            _, _, h_out, w_out = output.shape
+            
+            # Resize GT to match output spatial dimensions
+            gt_resized = F.interpolate(
+                gt,
+                size=(h_out, w_out),
+                mode='nearest'
+            )
+            
+            # Calculate BCE loss
+            bce = self.bce_loss(output, gt_resized)
+            
+            # Calculate dice loss
+            dice = self.dice_loss(output, gt_resized)
+            
+            # Calculate square dice loss
+            square_dice = self.square_dice_loss(output, gt_resized)
+            
+            # Combined loss for this stage: BCE + Dice + Square-Dice
+            loss_stage = bce + dice + square_dice
+            
+            # Weighted accumulation with lambda_i
+            total_loss += lambda_i * loss_stage
+        
+        return total_loss
+
+    def set_lambdas(self, lambdas):
+        """Customize lambda weights for each deep supervision level"""
+        self.lambdas = lambdas
