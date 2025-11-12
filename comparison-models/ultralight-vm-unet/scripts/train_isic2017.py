@@ -9,14 +9,14 @@ import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import MUCM_Net from root
+# Add parent directory to path to import UltraLight_VM_UNet from root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Add scripts directory to path for loss_functions
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import models and loss functions
-from archs_mucm_dev import MUCM_Net_8
-from loss_functions import MUCMNetDeepSupervisionLoss
+from UltraLight_VM_UNet import UltraLight_VM_UNet
+from loss_functions import CombinedLoss
 
 from PIL import Image
 from tqdm import tqdm
@@ -157,22 +157,25 @@ print("Test size:", len(test_dataset_2017))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
 
-# Initialize MUCM_Net_8 with deep supervision (5 stages)
-model = MUCM_Net_8(
-    num_classes=1,
-    input_channels=3,
-    deep_supervision=True
+# Initialize UltraLight-VM-UNet with paper's best configuration
+# 6-stage U-shape: [8,16,24,32,48,64]
+# PVM layers in stages 4-6, Conv blocks in stages 1-3
+# SAB + CAB skip bridges enabled
+model = UltraLight_VM_UNet(
+    num_classes=1,                      # Binary segmentation
+    input_channels=3,                   # RGB images
+    c_list=[8,16,24,32,48,64],         # Paper's best 6-stage widths
+    split_att='fc',                     # FC+Sigmoid for CAB (matches paper)
+    bridge=True                         # Enable SAB + CAB skip bridges
 ).to(device)
 
-# Deep supervision loss with lambdas: [0.1, 0.2, 0.3, 0.4, 0.5] for 5 stages
-# Loss = BCE + Dice + Square-Dice (sum of the three)
-criterion = MUCMNetDeepSupervisionLoss(
-    lambdas=[0.1, 0.2, 0.3, 0.4, 0.5],
-    dice_smooth=1.0
-)
-optimizer = optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.01)
+# Combined loss: BCE + Dice (as per paper)
+criterion = CombinedLoss()
+# AdamW optimizer with paper's settings
+optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.01)
+# Cosine annealing: 1e-3 → 1e-5 over 250 epochs
 scheduler = optim.lr_scheduler.CosineAnnealingLR(
-    optimizer, T_max=50, eta_min=1e-5
+    optimizer, T_max=250, eta_min=1e-5
 )
 
 
@@ -224,12 +227,12 @@ if __name__ == "__main__":
     weights_dir = os.path.join(project_root, "weights")
     os.makedirs(weights_dir, exist_ok=True)
 
-    n_epochs = 200
+    n_epochs = 250  # UltraLight-VM-UNet paper setting
     train_losses = []
     test_losses = []
 
     best_loss = float("inf")
-    best_model_path = os.path.join(weights_dir, "best_mucmnet_isic2017.pth")
+    best_model_path = os.path.join(weights_dir, "best_ultralight_vm_unet_isic2017.pth")
 
     for epoch in range(n_epochs):
         train_loss = train_epoch(train_loader_2017, model, criterion, optimizer, device, epoch, n_epochs)
@@ -250,7 +253,7 @@ if __name__ == "__main__":
             print(f"✅ Saved best model at epoch {epoch+1} with Test Loss: {test_loss:.4f}")
 
     # Optionally save final model too
-    final_model_path = os.path.join(weights_dir, "mucmnet_isic2017.pth")
+    final_model_path = os.path.join(weights_dir, "ultralight_vm_unet_isic2017.pth")
     torch.save(model.state_dict(), final_model_path)
     print("💾 Training complete, final model saved.")
 

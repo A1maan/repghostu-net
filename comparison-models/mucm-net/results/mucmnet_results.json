@@ -1,0 +1,20 @@
+{
+    "ISIC2017": {
+        "model": "MUCM-Net-8",
+        "dataset": "ISIC2017",
+        "mIoU": 82.28,
+        "DSC": 89.14,
+        "Sensitivity": 92.27,
+        "Specificity": 97.42,
+        "evaluation_date": "2025-11-12T20:29:08.907943"
+    },
+    "ISIC2018": {
+        "model": "MUCM-Net-8",
+        "dataset": "ISIC2018",
+        "mIoU": 82.09,
+        "DSC": 89.08,
+        "Sensitivity": 90.63,
+        "Specificity": 97.14,
+        "evaluation_date": "2025-11-12T20:29:08.907955"
+    }
+}

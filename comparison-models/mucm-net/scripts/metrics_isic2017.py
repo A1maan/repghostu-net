@@ -191,11 +191,16 @@ def evaluate_model_metrics(model, test_loader, device):
         for imgs, masks in progress_bar:
             imgs, masks = imgs.to(device), masks.to(device)
             
-            # Get predictions from ESEUNet (returns list of outputs from deep supervision)
+            # Get predictions from MUCM_Net_8 (returns tuple: ((outtpre0-4), final_out))
             outputs = model(imgs)
-            # Use main output (first element) for metrics calculation
-            main_output = outputs[0]
-            predictions = torch.sigmoid(main_output)
+            # Extract final output from tuple
+            if isinstance(outputs, tuple):
+                # outputs is ((outtpre0, outtpre1, outtpre2, outtpre3, outtpre4), final_out)
+                _, final_output = outputs
+            else:
+                final_output = outputs
+            
+            predictions = torch.sigmoid(final_output)
             
             # Calculate metrics for each sample in the batch
             for i in range(imgs.shape[0]):
@@ -309,9 +314,12 @@ imgs, masks = imgs.to(device), masks.to(device)
 
 with torch.no_grad():
     outputs = model(imgs)
-    # Extract main output from deep supervision list
-    main_output = outputs[0]
-    preds = torch.sigmoid(main_output)
+    # Extract final output from tuple
+    if isinstance(outputs, tuple):
+        _, final_output = outputs
+    else:
+        final_output = outputs
+    preds = torch.sigmoid(final_output)
 
 n_samples = min(6, imgs.shape[0])
 plt.figure(figsize=(15, n_samples * 3))

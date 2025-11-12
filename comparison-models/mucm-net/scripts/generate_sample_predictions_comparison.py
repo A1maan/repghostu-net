@@ -214,9 +214,12 @@ def visualize_predictions(model, loader, dataset_name, save_prefix):
     
     with torch.no_grad():
         outputs = model(imgs_batch)
-        # ESEUNet returns list of predictions from deep supervision
-        main_output = outputs[0]
-        preds = torch.sigmoid(main_output)
+        # MUCM_Net_8 returns tuple: ((intermediate_outputs), final_output)
+        if isinstance(outputs, tuple):
+            _, final_output = outputs
+        else:
+            final_output = outputs
+        preds = torch.sigmoid(final_output)
     
     n_samples = min(6, imgs_batch.shape[0])
     

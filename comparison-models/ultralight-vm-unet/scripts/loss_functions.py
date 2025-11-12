@@ -180,6 +180,81 @@ class SquareDiceLoss(nn.Module):
         return 1.0 - dice_coef
 
 
+class CombinedLoss(nn.Module):
+    """
+    Simple combined loss for UltraLight-VM-UNet: BCE + Dice
+    
+    Loss = BCE(GT, Output) + Dice(GT, Output)
+    
+    This is the standard loss used in the UltraLight-VM-UNet paper.
+    """
+    def __init__(self, dice_smooth=1.0):
+        super(CombinedLoss, self).__init__()
+        self.bce_loss = nn.BCEWithLogitsLoss()
+        self.dice_loss = DiceLoss(smooth=dice_smooth)
+
+    def forward(self, outputs, gt):
+        """
+        Args:
+            outputs (torch.Tensor): Predictions from model, shape [B, 1, H, W]
+            gt (torch.Tensor): Ground truth, shape [B, 1, H, W]
+        Returns:
+            torch.Tensor: Combined BCE + Dice loss
+        """
+        # If outputs is a tuple (from deep supervision), extract final output
+        if isinstance(outputs, tuple):
+            outputs = outputs[-1]
+        
+        # Resize GT to match output spatial dimensions if needed
+        if outputs.shape[2:] != gt.shape[2:]:
+            gt = F.interpolate(
+                gt,
+                size=(outputs.shape[2], outputs.shape[3]),
+                mode='nearest'
+            )
+        
+        # Calculate BCE loss
+        bce = self.bce_loss(outputs, gt)
+        
+        # Calculate dice loss
+        dice = self.dice_loss(outputs, gt)
+        
+        # Combined loss: BCE + Dice
+        return bce + dice
+
+
+class MUCMNetDeepSupervisionLoss(nn.Module):
+    """
+    Square Dice Loss for MUCM-Net
+    """
+    def __init__(self, smooth=1.0):
+        super(SquareDiceLoss, self).__init__()
+        self.smooth = smooth
+
+    def forward(self, inputs, targets):
+        """
+        Args:
+            inputs (torch.Tensor): Predictions from model, shape [B, C, H, W]
+            targets (torch.Tensor): Ground truth, shape [B, C, H, W] or [B, 1, H, W]
+        Returns:
+            torch.Tensor: Square Dice loss value
+        """
+        # Convert to probabilities
+        probs = torch.sigmoid(inputs)
+        
+        # Flatten
+        probs = probs.view(-1)
+        targets = targets.view(-1)
+        
+        # Square Dice coefficient
+        intersection = (probs * targets).sum()
+        dice_coef = (2.0 * intersection + self.smooth) / (
+            (probs ** 2).sum() + (targets ** 2).sum() + self.smooth
+        )
+        
+        return 1.0 - dice_coef
+
+
 class MUCMNetDeepSupervisionLoss(nn.Module):
     """
     Combined loss for MUCM-Net deep supervision strategy.

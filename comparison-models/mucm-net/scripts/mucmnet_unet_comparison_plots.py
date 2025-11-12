@@ -2,19 +2,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # MUCM-Net-8 Results from ISIC2017 and ISIC2018 evaluations
-# Placeholder values - to be filled after training and evaluation
 isic2017_results = {
-    'mIoU': 0.0,
-    'DSC': 0.0,
-    'Sensitivity': 0.0,
-    'Specificity': 0.0
+    'mIoU': 82.28,
+    'DSC': 89.14,
+    'Sensitivity': 92.27,
+    'Specificity': 97.42
 }
 
 isic2018_results = {
-    'mIoU': 0.0,
-    'DSC': 0.0,
-    'Sensitivity': 0.0,
-    'Specificity': 0.0
+    'mIoU': 82.09,
+    'DSC': 89.08,
+    'Sensitivity': 90.63,
+    'Specificity': 97.14
 }
 
 # Create comparison plot
@@ -45,7 +44,7 @@ add_value_labels(bars2)
 
 ax.set_xlabel('Metrics', fontsize=12, fontweight='bold')
 ax.set_ylabel('Performance (%)', fontsize=12, fontweight='bold')
-ax.set_title('ESEUNet Performance Comparison: ISIC2017 vs ISIC2018', fontsize=14, fontweight='bold', pad=20)
+ax.set_title('MUCM-Net-8 Performance Comparison: ISIC2017 vs ISIC2018', fontsize=14, fontweight='bold', pad=20)
 ax.set_xticks(x)
 ax.set_xticklabels(metrics, fontsize=11)
 ax.legend(fontsize=11)
@@ -56,13 +55,13 @@ ax.set_ylim(0, 105)
 ax.set_facecolor('#F8F9FA')
 
 plt.tight_layout()
-plt.savefig('eseunet_isic_comparison_metrics.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("📊 Comparison plot saved as 'eseunet_isic_comparison_metrics.png'")
+plt.savefig('mucmnet_isic_comparison_metrics.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("📊 Comparison plot saved as 'mucmnet_isic_comparison_metrics.png'")
 plt.show()
 
 # Print summary comparison
 print("\n" + "="*60)
-print("ESEUNet PERFORMANCE COMPARISON")
+print("MUCM-NET-8 PERFORMANCE COMPARISON")
 print("="*60)
 print("Metric          ISIC2017    ISIC2018    Difference")
 print("-" * 60)
@@ -74,11 +73,11 @@ print("="*60)
 
 # Additional analysis
 print("\n📈 ANALYSIS:")
-print("• ESEUNet shows excellent performance on both datasets")
+print("• MUCM-Net-8 shows excellent performance on both datasets")
 print("• Specificity is outstanding for both datasets")
 print("• DSC and mIoU show strong segmentation performance")
-print("• Consistent improvements from ISIC2017 to ISIC2018")
-print("• Strong segmentation results with deep supervision")
+print("• High sensitivity demonstrates effective lesion detection")
+print("• Consistent performance with deep supervision strategy")
 
 # Create a second plot showing performance differences
 fig2, ax2 = plt.subplots(figsize=(10, 6))
@@ -98,18 +97,22 @@ for bar, diff in zip(bars, differences):
                 fontsize=11, fontweight='bold')
 
 ax2.set_ylabel('Performance Difference (%)', fontsize=12, fontweight='bold')
-ax2.set_title('ISIC2017 vs ISIC2018 Performance Differences (ESEUNet)\n(Positive = ISIC2018 Better)', 
+ax2.set_title('ISIC2017 vs ISIC2018 Performance Differences (MUCM-Net-8)\n(Positive = ISIC2018 Better)', 
               fontsize=14, fontweight='bold', pad=20)
 ax2.grid(axis='y', alpha=0.3)
 ax2.axhline(y=0, color='black', linestyle='-', alpha=0.3)
 ax2.set_facecolor('#F8F9FA')
 
 plt.tight_layout()
-plt.savefig('eseunet_isic_performance_differences.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("📊 Performance difference plot saved as 'eseunet_isic_performance_differences.png'")
+plt.savefig('mucmnet_isic_performance_differences.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("📊 Performance difference plot saved as 'mucmnet_isic_performance_differences.png'")
 plt.show()
 
 # Create a comprehensive comparison with baseline models
+# MUCM-Net-8 results (already defined above)
+mucmnet_isic2017 = isic2017_results
+mucmnet_isic2018 = isic2018_results
+
 # ESEUNet results for comparison
 eseunet_isic2017 = {
     'mIoU': 82.37,
@@ -166,16 +169,19 @@ msgu_2017_avg = np.mean(list(msgu_isic2017.values()))
 msgu_2018_avg = np.mean(list(msgu_isic2018.values()))
 rg_2017_avg = np.mean(list(rg_isic2017.values()))
 rg_2018_avg = np.mean(list(rg_isic2018.values()))
-eseunet_2017_avg = np.mean(list(eseunet_isic2017.values())) if any(eseunet_isic2017.values()) else 0
-eseunet_2018_avg = np.mean(list(eseunet_isic2018.values())) if any(eseunet_isic2018.values()) else 0
+eseunet_2017_avg = np.mean(list(eseunet_isic2017.values()))
+eseunet_2018_avg = np.mean(list(eseunet_isic2018.values()))
+mucmnet_2017_avg = np.mean(list(mucmnet_isic2017.values()))
+mucmnet_2018_avg = np.mean(list(mucmnet_isic2018.values()))
 
-bars1 = ax3.bar(x_pos - 1.5*width, list(msgu_isic2017.values()), width, label='MSGU-Net (ISIC2017)', color='#3498DB', alpha=0.8)
-bars2 = ax3.bar(x_pos - 0.5*width, list(msgu_isic2018.values()), width, label='MSGU-Net (ISIC2018)', color='#5DADE2', alpha=0.8)
-bars3 = ax3.bar(x_pos + 0.5*width, list(rg_isic2017.values()), width, label='RepGhostUNet (ISIC2017)', color='#E74C3C', alpha=0.8)
-bars4 = ax3.bar(x_pos + 1.5*width, list(rg_isic2018.values()), width, label='RepGhostUNet (ISIC2018)', color='#EC7063', alpha=0.8)
+bars1 = ax3.bar(x_pos - 2*width, list(msgu_isic2017.values()), width, label='MSGU-Net (ISIC2017)', color='#3498DB', alpha=0.8)
+bars2 = ax3.bar(x_pos - width, list(rg_isic2017.values()), width, label='RepGhostUNet (ISIC2017)', color='#E74C3C', alpha=0.8)
+bars3 = ax3.bar(x_pos, list(eseunet_isic2017.values()), width, label='ESEUNet (ISIC2017)', color='#27AE60', alpha=0.8)
+bars4 = ax3.bar(x_pos + width, list(mucmnet_isic2017.values()), width, label='MUCM-Net-8 (ISIC2017)', color='#F39C12', alpha=0.8)
+bars5 = ax3.bar(x_pos + 2*width, list(mucmnet_isic2018.values()), width, label='MUCM-Net-8 (ISIC2018)', color='#E67E22', alpha=0.8)
 
 # Add value labels
-for bars in [bars1, bars2, bars3, bars4]:
+for bars in [bars1, bars2, bars3, bars4, bars5]:
     for bar in bars:
         height = bar.get_height()
         ax3.annotate(f'{height:.1f}',
@@ -183,38 +189,44 @@ for bars in [bars1, bars2, bars3, bars4]:
                     xytext=(0, 2),
                     textcoords="offset points",
                     ha='center', va='bottom',
-                    fontsize=8)
+                    fontsize=7)
 
 ax3.set_xlabel('Metrics', fontsize=12, fontweight='bold')
 ax3.set_ylabel('Performance (%)', fontsize=12, fontweight='bold')
-ax3.set_title('Model Comparison: MSGU-Net vs RepGhostUNet', fontsize=14, fontweight='bold', pad=20)
+ax3.set_title('Model Comparison: MSGU-Net vs RepGhostUNet vs ESEUNet vs MUCM-Net-8', fontsize=14, fontweight='bold', pad=20)
 ax3.set_xticks(x_pos)
 ax3.set_xticklabels(metrics, fontsize=11)
-ax3.legend(fontsize=10, loc='lower right')
+ax3.legend(fontsize=9, loc='lower right')
 ax3.grid(axis='y', alpha=0.3)
 ax3.set_ylim(0, 105)
 ax3.set_facecolor('#F8F9FA')
 
 plt.tight_layout()
-plt.savefig('repghost_unet_vs_msgunet_comparison.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("📊 Model comparison plot saved as 'repghost_unet_vs_msgunet_comparison.png'")
+plt.savefig('mucmnet_vs_all_models_comparison.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("📊 Model comparison plot saved as 'mucmnet_vs_all_models_comparison.png'")
 plt.show()
 
 # Print comprehensive analysis
 print("\n" + "="*80)
-print("COMPREHENSIVE MODEL COMPARISON: ESEUNet vs RepGhostUNet vs MSGU-Net")
+print("COMPREHENSIVE MODEL COMPARISON: MUCM-Net-8 vs ESEUNet vs RepGhostUNet vs MSGU-Net")
 print("="*80)
 print("\n📊 Average Performance Scores:")
 print(f"  MSGU-Net (ISIC2017):         {msgu_2017_avg:.2f}%")
 print(f"  MSGU-Net (ISIC2018):         {msgu_2018_avg:.2f}%")
 print(f"  RepGhostUNet (ISIC2017):     {rg_2017_avg:.2f}%")
 print(f"  RepGhostUNet (ISIC2018):     {rg_2018_avg:.2f}%")
-if eseunet_2017_avg > 0:
-    print(f"  ESEUNet (ISIC2017):          {eseunet_2017_avg:.2f}%")
-    print(f"  ESEUNet (ISIC2018):          {eseunet_2018_avg:.2f}%")
-else:
-    print(f"  ESEUNet (ISIC2017):          [Awaiting training results]")
-    print(f"  ESEUNet (ISIC2018):          [Awaiting training results]")
+print(f"  ESEUNet (ISIC2017):          {eseunet_2017_avg:.2f}%")
+print(f"  ESEUNet (ISIC2018):          {eseunet_2018_avg:.2f}%")
+print(f"  MUCM-Net-8 (ISIC2017):       {mucmnet_2017_avg:.2f}%")
+print(f"  MUCM-Net-8 (ISIC2018):       {mucmnet_2018_avg:.2f}%")
+
+print(f"\n🚀 MUCM-Net-8 Improvement over MSGU-Net:")
+print(f"  ISIC2017:  +{mucmnet_2017_avg - msgu_2017_avg:.2f}% ({((mucmnet_2017_avg / msgu_2017_avg - 1) * 100):.1f}% relative)")
+print(f"  ISIC2018:  +{mucmnet_2018_avg - msgu_2018_avg:.2f}% ({((mucmnet_2018_avg / msgu_2018_avg - 1) * 100):.1f}% relative)")
+
+print(f"\n🚀 MUCM-Net-8 vs ESEUNet:")
+print(f"  ISIC2017:  {mucmnet_2017_avg - eseunet_2017_avg:+.2f}% difference")
+print(f"  ISIC2018:  {mucmnet_2018_avg - eseunet_2018_avg:+.2f}% difference")
 
 print(f"\n🚀 RepGhostUNet Improvement over MSGU-Net:")
 print(f"  ISIC2017:  +{rg_2017_avg - msgu_2017_avg:.2f}% ({((rg_2017_avg / msgu_2017_avg - 1) * 100):.1f}% relative)")

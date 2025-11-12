@@ -1,0 +1,24 @@
+============================================================
+MUCM-Net-8 Evaluation Results
+============================================================
+
+Dataset: ISIC2017
+Model: MUCM-Net-8
+Evaluation Date: 2025-11-12T20:29:08.907943
+------------------------------------------------------------
+mIoU (Mean Intersection over Union): 82.28%
+DSC (Dice Similarity Coefficient):   89.14%
+Sensitivity (Recall):                92.27%
+Specificity:                         97.42%
+
+
+Dataset: ISIC2018
+Model: MUCM-Net-8
+Evaluation Date: 2025-11-12T20:29:08.907955
+------------------------------------------------------------
+mIoU (Mean Intersection over Union): 82.09%
+DSC (Dice Similarity Coefficient):   89.08%
+Sensitivity (Recall):                90.63%
+Specificity:                         97.14%
+
+

@@ -9,11 +9,11 @@ import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import MUCM_Net
+# Add parent directory to path to import UltraLight_VM_UNet
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import MUCM_Net model
-from archs_mucm_dev import MUCM_Net_8
+# Import UltraLight-VM-UNet model
+from UltraLight_VM_UNet import UltraLight_VM_UNet
 
 from PIL import Image
 from tqdm import tqdm
@@ -191,11 +191,9 @@ def evaluate_model_metrics(model, test_loader, device):
         for imgs, masks in progress_bar:
             imgs, masks = imgs.to(device), masks.to(device)
             
-            # Get predictions from ESEUNet (returns list of outputs from deep supervision)
-            outputs = model(imgs)
-            # Use main output (first element) for metrics calculation
-            main_output = outputs[0]
-            predictions = torch.sigmoid(main_output)
+            # Get predictions from UltraLight-VM-UNet (returns single tensor with sigmoid applied)
+            predictions = model(imgs)
+            # No need to apply sigmoid - model already returns sigmoid output
             
             # Calculate metrics for each sample in the batch
             for i in range(imgs.shape[0]):
@@ -252,16 +250,18 @@ print("Test size:", len(test_dataset_2018))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
 
-# Initialize MUCM_Net_8 model with deep supervision
-model = MUCM_Net_8(
+# Initialize UltraLight-VM-UNet model
+model = UltraLight_VM_UNet(
     num_classes=1,
     input_channels=3,
-    deep_supervision=True
+    c_list=[8,16,24,32,48,64],
+    split_att='fc',
+    bridge=True
 ).to(device)
 
-# Load pretrained weights (weights are in comparison-models/mucm-net/weights/)
+# Load pretrained weights (weights are in comparison-models/ultralight-vm-unet/weights/)
 weights_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "weights")
-pretrained_weights_path = os.path.join(weights_dir, "best_mucmnet_isic2018.pth")
+pretrained_weights_path = os.path.join(weights_dir, "best_ultralight_vm_unet_isic2018.pth")
 if os.path.exists(pretrained_weights_path):
     print(f"Loading pretrained weights from: {pretrained_weights_path}")
     model.load_state_dict(torch.load(pretrained_weights_path, map_location=device))
@@ -308,10 +308,8 @@ imgs, masks = next(iter(test_loader_2018))
 imgs, masks = imgs.to(device), masks.to(device)
 
 with torch.no_grad():
-    outputs = model(imgs)
-    # Extract main output from deep supervision list
-    main_output = outputs[0]
-    preds = torch.sigmoid(main_output)
+    preds = model(imgs)
+    # UltraLight-VM-UNet already returns sigmoid output - no need to extract or apply sigmoid
 
 n_samples = min(6, imgs.shape[0])
 plt.figure(figsize=(15, n_samples * 3))
@@ -347,7 +345,7 @@ plt.tight_layout()
 comparison_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 plots_dir = os.path.join(comparison_dir, "plots")
 os.makedirs(plots_dir, exist_ok=True)
-plt.savefig(os.path.join(plots_dir, 'mucmnet_predictions_with_metrics_isic2018.png'), dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(plots_dir, 'ultralight_vm_unet_predictions_with_metrics_isic2018.png'), dpi=300, bbox_inches='tight')
 plt.show()
 
 print("\n" + "="*60)
