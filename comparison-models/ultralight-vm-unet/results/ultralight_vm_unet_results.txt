@@ -1,0 +1,24 @@
+============================================================
+UltraLight-VM-UNet Evaluation Results
+============================================================
+
+Dataset: ISIC2017
+Model: UltraLight-VM-UNet
+Evaluation Date: 2025-11-19T22:34:18.019070
+------------------------------------------------------------
+mIoU (Mean Intersection over Union): 81.36%
+DSC (Dice Similarity Coefficient):   88.66%
+Sensitivity (Recall):                90.51%
+Specificity:                         98.00%
+
+
+Dataset: ISIC2018
+Model: UltraLight-VM-UNet
+Evaluation Date: 2025-11-19T22:34:18.019081
+------------------------------------------------------------
+mIoU (Mean Intersection over Union): 80.24%
+DSC (Dice Similarity Coefficient):   87.83%
+Sensitivity (Recall):                91.03%
+Specificity:                         96.27%
+
+

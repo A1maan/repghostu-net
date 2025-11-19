@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-# MUCM-Net-8 Results from ISIC2017 and ISIC2018 evaluations
+# UltraLight-VM-UNet Results from ISIC2017 and ISIC2018 evaluations
 # Placeholder values - to be filled after training and evaluation
 isic2017_results = {
     'mIoU': 0.0,
@@ -45,7 +45,7 @@ add_value_labels(bars2)
 
 ax.set_xlabel('Metrics', fontsize=12, fontweight='bold')
 ax.set_ylabel('Performance (%)', fontsize=12, fontweight='bold')
-ax.set_title('ESEUNet Performance Comparison: ISIC2017 vs ISIC2018', fontsize=14, fontweight='bold', pad=20)
+ax.set_title('UltraLight-VM-UNet Performance Comparison: ISIC2017 vs ISIC2018', fontsize=14, fontweight='bold', pad=20)
 ax.set_xticks(x)
 ax.set_xticklabels(metrics, fontsize=11)
 ax.legend(fontsize=11)
@@ -56,13 +56,13 @@ ax.set_ylim(0, 105)
 ax.set_facecolor('#F8F9FA')
 
 plt.tight_layout()
-plt.savefig('eseunet_isic_comparison_metrics.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("📊 Comparison plot saved as 'eseunet_isic_comparison_metrics.png'")
+plt.savefig('ultralight_vm_unet_isic_comparison_metrics.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("📊 Comparison plot saved as 'ultralight_vm_unet_isic_comparison_metrics.png'")
 plt.show()
 
 # Print summary comparison
 print("\n" + "="*60)
-print("ESEUNet PERFORMANCE COMPARISON")
+print("ULTRALIGHT-VM-UNET PERFORMANCE COMPARISON")
 print("="*60)
 print("Metric          ISIC2017    ISIC2018    Difference")
 print("-" * 60)
@@ -74,11 +74,11 @@ print("="*60)
 
 # Additional analysis
 print("\n📈 ANALYSIS:")
-print("• ESEUNet shows excellent performance on both datasets")
+print("• UltraLight-VM-UNet with efficient 6-stage architecture")
+print("• Quad-parallel Mamba layers for advanced feature extraction")
 print("• Specificity is outstanding for both datasets")
 print("• DSC and mIoU show strong segmentation performance")
-print("• Consistent improvements from ISIC2017 to ISIC2018")
-print("• Strong segmentation results with deep supervision")
+print("• Split attention and skip bridges enhance feature propagation")
 
 # Create a second plot showing performance differences
 fig2, ax2 = plt.subplots(figsize=(10, 6))
@@ -98,15 +98,15 @@ for bar, diff in zip(bars, differences):
                 fontsize=11, fontweight='bold')
 
 ax2.set_ylabel('Performance Difference (%)', fontsize=12, fontweight='bold')
-ax2.set_title('ISIC2017 vs ISIC2018 Performance Differences (ESEUNet)\n(Positive = ISIC2018 Better)', 
+ax2.set_title('ISIC2017 vs ISIC2018 Performance Differences (UltraLight-VM-UNet)\n(Positive = ISIC2018 Better)', 
               fontsize=14, fontweight='bold', pad=20)
 ax2.grid(axis='y', alpha=0.3)
 ax2.axhline(y=0, color='black', linestyle='-', alpha=0.3)
 ax2.set_facecolor('#F8F9FA')
 
 plt.tight_layout()
-plt.savefig('eseunet_isic_performance_differences.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("📊 Performance difference plot saved as 'eseunet_isic_performance_differences.png'")
+plt.savefig('ultralight_vm_unet_isic_performance_differences.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("📊 Performance difference plot saved as 'ultralight_vm_unet_isic_performance_differences.png')")
 plt.show()
 
 # Create a comprehensive comparison with baseline models
@@ -187,7 +187,7 @@ for bars in [bars1, bars2, bars3, bars4]:
 
 ax3.set_xlabel('Metrics', fontsize=12, fontweight='bold')
 ax3.set_ylabel('Performance (%)', fontsize=12, fontweight='bold')
-ax3.set_title('Model Comparison: MSGU-Net vs RepGhostUNet', fontsize=14, fontweight='bold', pad=20)
+ax3.set_title('Model Comparison: UltraLight-VM-UNet vs All Baselines', fontsize=14, fontweight='bold', pad=20)
 ax3.set_xticks(x_pos)
 ax3.set_xticklabels(metrics, fontsize=11)
 ax3.legend(fontsize=10, loc='lower right')
@@ -196,13 +196,13 @@ ax3.set_ylim(0, 105)
 ax3.set_facecolor('#F8F9FA')
 
 plt.tight_layout()
-plt.savefig('repghost_unet_vs_msgunet_comparison.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("📊 Model comparison plot saved as 'repghost_unet_vs_msgunet_comparison.png'")
+plt.savefig('ultralight_vm_unet_vs_all_comparison.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("📊 Model comparison plot saved as 'ultralight_vm_unet_vs_all_comparison.png'")
 plt.show()
 
 # Print comprehensive analysis
 print("\n" + "="*80)
-print("COMPREHENSIVE MODEL COMPARISON: ESEUNet vs RepGhostUNet vs MSGU-Net")
+print("COMPREHENSIVE MODEL COMPARISON: UltraLight-VM-UNet vs ESEUNet vs RepGhostUNet vs MSGU-Net")
 print("="*80)
 print("\n📊 Average Performance Scores:")
 print(f"  MSGU-Net (ISIC2017):         {msgu_2017_avg:.2f}%")

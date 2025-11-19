@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-# MUCM-Net-8 Results from ISIC2017 and ISIC2018 evaluations
+# UltraLight-VM-UNet Results from ISIC2017 and ISIC2018 evaluations
 # Placeholder values - to be filled after training and evaluation
 isic2017_results = {
     'mIoU': 0.0,
@@ -45,7 +45,7 @@ add_value_labels(bars2)
 
 ax.set_xlabel('Metrics', fontsize=12, fontweight='bold')
 ax.set_ylabel('Performance (%)', fontsize=12, fontweight='bold')
-ax.set_title('MUCM-Net-8 Performance Comparison: ISIC2017 vs ISIC2018', fontsize=14, fontweight='bold', pad=20)
+ax.set_title('UltraLight-VM-UNet Performance Comparison: ISIC2017 vs ISIC2018', fontsize=14, fontweight='bold', pad=20)
 ax.set_xticks(x)
 ax.set_xticklabels(metrics, fontsize=11)
 ax.legend(fontsize=11)
@@ -56,13 +56,13 @@ ax.set_ylim(0, 105)
 ax.set_facecolor('#F8F9FA')
 
 plt.tight_layout()
-plt.savefig('mucmnet_isic_comparison_metrics.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("📊 Comparison plot saved as 'mucmnet_isic_comparison_metrics.png'")
+plt.savefig('ultralight_vm_unet_isic_comparison_metrics.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("📊 Comparison plot saved as 'ultralight_vm_unet_isic_comparison_metrics.png'")
 plt.show()
 
 # Print summary comparison
 print("\n" + "="*60)
-print("MUCM-Net-8 PERFORMANCE COMPARISON")
+print("ULTRALIGHT-VM-UNET PERFORMANCE COMPARISON")
 print("="*60)
 print("Metric          ISIC2017    ISIC2018    Difference")
 print("-" * 60)
@@ -74,11 +74,11 @@ print("="*60)
 
 # Additional analysis
 print("\n📈 ANALYSIS:")
-print("• MUCM-Net-8 with 8-patch Mamba layers for efficient processing")
+print("• UltraLight-VM-UNet with 6-stage U-shape and quad-parallel Mamba layers")
+print("• Architecture: SAB + CAB skip bridges, channels [8,16,24,32,48,64]")
 print("• Training configuration: AdamW optimizer, CosineAnnealingLR scheduler")
-print("• Deep supervision loss: BCE + Dice + Square-Dice")
-print("• Stage weights: λᵢ = {0.1, 0.2, 0.3, 0.4, 0.5} for progressive stages")
-print("• Training: 200 epochs, batch size 8, learning rate 0.001")
+print("• Loss function: BCE + Dice (simple combined loss)")
+print("• Training: 250 epochs, batch size 8, learning rate 1e-3 → 1e-5")
 
 # Create a second plot showing performance differences
 fig2, ax2 = plt.subplots(figsize=(10, 6))
@@ -98,15 +98,15 @@ for bar, diff in zip(bars, differences):
                 fontsize=11, fontweight='bold')
 
 ax2.set_ylabel('Performance Difference (%)', fontsize=12, fontweight='bold')
-ax2.set_title('ISIC2017 vs ISIC2018 Performance Differences (MUCM-Net-8)\n(Positive = ISIC2018 Better)', 
+ax2.set_title('ISIC2017 vs ISIC2018 Performance Differences (UltraLight-VM-UNet)\n(Positive = ISIC2018 Better)', 
               fontsize=14, fontweight='bold', pad=20)
 ax2.grid(axis='y', alpha=0.3)
 ax2.axhline(y=0, color='black', linestyle='-', alpha=0.3)
 ax2.set_facecolor('#F8F9FA')
 
 plt.tight_layout()
-plt.savefig('eseunet_isic_performance_differences.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("📊 Performance difference plot saved as 'eseunet_isic_performance_differences.png'")
+plt.savefig('ultralight_vm_unet_isic_performance_differences.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("📊 Performance difference plot saved as 'ultralight_vm_unet_isic_performance_differences.png')")
 plt.show()
 
 # Create a comprehensive comparison with baseline models

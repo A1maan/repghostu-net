@@ -1,0 +1,20 @@
+{
+    "ISIC2017": {
+        "model": "UltraLight-VM-UNet",
+        "dataset": "ISIC2017",
+        "mIoU": 81.36,
+        "DSC": 88.66,
+        "Sensitivity": 90.51,
+        "Specificity": 98.0,
+        "evaluation_date": "2025-11-19T22:34:18.019070"
+    },
+    "ISIC2018": {
+        "model": "UltraLight-VM-UNet",
+        "dataset": "ISIC2018",
+        "mIoU": 80.24,
+        "DSC": 87.83,
+        "Sensitivity": 91.03,
+        "Specificity": 96.27,
+        "evaluation_date": "2025-11-19T22:34:18.019081"
+    }
+}
