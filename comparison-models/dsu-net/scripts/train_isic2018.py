@@ -9,13 +9,13 @@ import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import ESEUNet from root
+# Add parent directory to path to import DSU-Net from root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Add scripts directory to path for loss_functions
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import models and loss functions
-from ESEUNet import ESEUNet
+from DSU_Net import DSUNet
 from loss_functions import CombinedDeepSupervisionLoss
 
 from PIL import Image
@@ -161,20 +161,10 @@ print("Test size:", len(test_dataset_2018))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
 
-# Initialize ESEUNet with deep supervision
-# Parameters: W=128, K=3, DR=2, R=4, CS=False
-model = ESEUNet(
-    img_channels=3, 
-    out_channels=1, 
-    dim=128,           # Model Width (W)
-    depth=5,
-    kernel_size=3,     # Kernel Size (K)
-    dilation=2,        # Dilation Rate (DR)
-    ratio=4,           # Reduction Rate (R)
-    pad=2,
-    shuffle=False,     # Channel Shuffle (CS)
-    deep_supervision=True,
-    deep_out=5
+# Initialize DSU-Net
+model = DSUNet(
+    n_channels=3, 
+    n_classes=1
 ).to(device)
 
 # Deep supervision loss with default lambdas: [0.5, 0.4, 0.3, 0.2, 0.1]
@@ -201,8 +191,9 @@ def train_epoch(loader, model, criterion, optimizer, device, epoch=None, n_epoch
         imgs, masks = imgs.to(device), masks.to(device)
 
         optimizer.zero_grad()
-        outputs = model(imgs)
-        loss = criterion(outputs, masks)
+        outputs = model(imgs)  # DSU-Net returns dict with 'out' and 'outs'
+        out = outputs['out']
+        loss = criterion(out, masks)
         loss.backward()
         optimizer.step()
         
@@ -221,8 +212,9 @@ def eval_epoch(loader, model, criterion, device, epoch=None, n_epochs=None):
         
         for imgs, masks in progress_bar:
             imgs, masks = imgs.to(device), masks.to(device)
-            outputs = model(imgs)
-            loss = criterion(outputs, masks)
+            outputs = model(imgs)  # DSU-Net returns dict with 'out' and 'outs'
+            out = outputs['out']
+            loss = criterion(out, masks)
             
             running_loss += loss.item()
             progress_bar.set_postfix(loss=loss.item())
@@ -243,7 +235,7 @@ if __name__ == "__main__":
     test_losses = []
 
     best_loss = float("inf")
-    best_model_path = os.path.join(weights_dir, "best_eseunet_isic2018.pth")
+    best_model_path = os.path.join(weights_dir, "best_dsunet_isic2018.pth")
 
     for epoch in range(n_epochs):
         train_loss = train_epoch(train_loader_2018, model, criterion, optimizer, device, epoch, n_epochs)
@@ -261,7 +253,7 @@ if __name__ == "__main__":
             print(f"✅ Saved best model at epoch {epoch+1} with Test Loss: {test_loss:.4f}")
 
     # Optionally save final model too
-    final_model_path = os.path.join(weights_dir, "eseunet_isic2018.pth")
+    final_model_path = os.path.join(weights_dir, "dsunet_isic2018.pth")
     torch.save(model.state_dict(), final_model_path)
     print("💾 Training complete, final model saved.")
 
@@ -269,10 +261,8 @@ if __name__ == "__main__":
     imgs, masks = next(iter(test_loader_2018))
     imgs, masks = imgs.to(device), masks.to(device)
     with torch.no_grad():
-        outputs = model(imgs)  # Returns list of predictions
-        # Use main output (first element from deep supervision)
-        main_output = outputs[0]
-        preds = torch.sigmoid(main_output)
+        outputs = model(imgs)  # Returns dict with 'out' and 'outs'
+        preds = outputs['out']
 
     n_samples = min(6, imgs.shape[0])
     plt.figure(figsize=(12, n_samples * 3))
@@ -289,14 +279,14 @@ if __name__ == "__main__":
         plt.axis('off')
         # Prediction
         plt.subplot(n_samples, 3, idx * 3 + 3)
-        plt.title("ESEUNet Prediction")
+        plt.title("DSU-Net Prediction")
         plt.imshow(preds[idx,0].cpu().numpy() > 0.5, cmap="gray")
         plt.axis('off')
 
     plt.tight_layout()
     plots_dir = os.path.join(project_root, "plots")
     os.makedirs(plots_dir, exist_ok=True)
-    plt.savefig(os.path.join(plots_dir, 'eseunet_predictions_grid_isic2018.png'))
+    plt.savefig(os.path.join(plots_dir, 'dsunet_predictions_grid_isic2018.png'))
     plt.show()
 
     # After training cell (after training loop and model saving)
@@ -305,10 +295,10 @@ if __name__ == "__main__":
     plt.plot(test_losses, label="Test Loss")
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.title("ESEUNet - Loss Curve (ISIC2018)")
+    plt.title("DSU-Net - Loss Curve (ISIC2018)")
     plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(plots_dir, 'eseunet_loss_curve_isic2018.png'))
+    plt.savefig(os.path.join(plots_dir, 'dsunet_loss_curve_isic2018.png'))
     plt.show()
 
 
