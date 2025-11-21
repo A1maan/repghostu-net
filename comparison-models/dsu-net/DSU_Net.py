@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 import torch
 from torch import nn
-from timm.models.layers import DropPath
+from timm.layers import DropPath
 
 
 class DepthwiseConv1dxDx1WithDilation(nn.Module):

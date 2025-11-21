@@ -9,11 +9,11 @@ import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import ESEUNet
+# Add parent directory to path to import DSU-Net
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import ESEUNet model
-from ESEUNet import ESEUNet
+# Import DSU-Net model
+from DSU_Net import DSUNet
 
 from PIL import Image
 from tqdm import tqdm
@@ -191,15 +191,20 @@ def evaluate_model_metrics(model, test_loader, device):
         for imgs, masks in progress_bar:
             imgs, masks = imgs.to(device), masks.to(device)
             
-            # Get predictions from ESEUNet (returns list of outputs from deep supervision)
+            # Get predictions from DSU-Net (returns dict with 'out' and 'outs')
             outputs = model(imgs)
-            # Use main output (first element) for metrics calculation
-            main_output = outputs[0]
-            predictions = torch.sigmoid(main_output)
+            # Use main output for metrics calculation
+            main_output = outputs['out']  # Shape: [B, 1, H, W]
+            
+            # DSU-Net outputs are already in [0, 1] range, just threshold at 0.5 like training script
+            predictions = main_output  # Keep raw output for metric calculation
             
             # Calculate metrics for each sample in the batch
             for i in range(imgs.shape[0]):
-                metrics = calculate_metrics(predictions[i:i+1], masks[i:i+1])
+                pred_sample = predictions[i:i+1]  # [1, 1, H, W]
+                mask_sample = masks[i:i+1]  # [1, 1, H, W]
+                
+                metrics = calculate_metrics(pred_sample, mask_sample)
                 all_ious.append(metrics['mIoU'])
                 all_dscs.append(metrics['DSC'])
                 all_sensitivities.append(metrics['Sensitivity'])
@@ -218,20 +223,22 @@ def evaluate_model_metrics(model, test_loader, device):
 
 base_dir_2018 = "/home/aminu_yusuf/msgunet/datasets/ISIC2018"
 
-# Training transforms with augmentation (using albumentations)
+# Training transforms with augmentation (using albumentations) - MUST MATCH train_isic2018.py
 transform_train = A.Compose([
-    A.Resize(256, 256),
-    A.HorizontalFlip(p=0.5),
-    A.VerticalFlip(p=0.5), 
-    A.Rotate(limit=15, p=1.0),
-    A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    A.Resize(224, 224),
+    A.HorizontalFlip(p=0.5),                              # Random horizontal flipping
+    A.VerticalFlip(p=0.5),                                # Random vertical flipping
+    A.Rotate(limit=15, p=0.5),                            # Rotation ±15 degrees
+    A.RandomBrightnessContrast(brightness_limit=0.03, contrast_limit=0.03, p=0.5),  # ±3% brightness/contrast
+    A.HueSaturationValue(hue_shift_limit=3, sat_shift_limit=3, val_shift_limit=3, p=0.5),  # ±3% hue/sat/val
+    A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),  # Normalize to [-1, 1]
     ToTensorV2()
 ])
 
 # Test transforms (no augmentation - deterministic only)
 transform_test = A.Compose([
-    A.Resize(256, 256),
-    A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    A.Resize(224, 224),
+    A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),  # Same normalization as training
     ToTensorV2()
 ])
 
@@ -252,30 +259,26 @@ print("Test size:", len(test_dataset_2018))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
 
-# Initialize ESEUNet model with deep supervision
-model = ESEUNet(
-    img_channels=3, 
-    out_channels=1, 
-    dim=128,
-    depth=5,
-    kernel_size=3,
-    dilation=2,
-    ratio=4,
-    pad=2,
-    shuffle=False,
-    deep_supervision=True,
-    deep_out=5
+# Initialize DSU-Net model
+model = DSUNet(
+    n_channels=3, 
+    n_classes=1
 ).to(device)
 
-# Load pretrained weights (weights are in comparison-models/eseunet/weights/)
+# Load pretrained weights (weights are in comparison-models/dsu-net/weights/)
 weights_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "weights")
-pretrained_weights_path = os.path.join(weights_dir, "best_eseunet_isic2018.pth")
+pretrained_weights_path = os.path.join(weights_dir, "best_dsunet_isic2018.pth")
 if os.path.exists(pretrained_weights_path):
     print(f"Loading pretrained weights from: {pretrained_weights_path}")
-    model.load_state_dict(torch.load(pretrained_weights_path, map_location=device))
-    print("✅ Pretrained weights loaded successfully!")
+    state_dict = torch.load(pretrained_weights_path, map_location=device)
+    model.load_state_dict(state_dict)
+    print(f"✅ Pretrained weights loaded successfully!")
+    # Verify weights were loaded by checking a parameter
+    sample_param = next(iter(model.parameters()))
+    print(f"   Model param stats - mean: {sample_param.mean().item():.6f}, std: {sample_param.std().item():.6f}")
 else:
     print(f"❌ Warning: Pretrained weights not found at {pretrained_weights_path}")
+    print("   Model will use random weights!")
     print("Please ensure the weights file exists or update the path.")
 
 # Set model to evaluation mode for inference
@@ -317,9 +320,10 @@ imgs, masks = imgs.to(device), masks.to(device)
 
 with torch.no_grad():
     outputs = model(imgs)
-    # Extract main output from deep supervision list
-    main_output = outputs[0]
-    preds = torch.sigmoid(main_output)
+    # DSU-Net returns dict with 'out' key
+    main_output = outputs['out']
+    # Output is already in [0, 1] range, threshold at 0.5 like training script
+    preds = (main_output > 0.5).float()
 
 n_samples = min(6, imgs.shape[0])
 plt.figure(figsize=(15, n_samples * 3))
@@ -331,9 +335,9 @@ for idx in range(n_samples):
     # Original image
     plt.subplot(n_samples, 3, idx * 3 + 1)
     plt.title(f"Image {idx+1}")
-    # Denormalize image for display
+    # Denormalize image for display (using [0.5, 0.5, 0.5] normalization)
     img_denorm = imgs[idx].cpu()
-    img_denorm = img_denorm * torch.tensor([0.229, 0.224, 0.225]).view(3,1,1) + torch.tensor([0.485, 0.456, 0.406]).view(3,1,1)
+    img_denorm = img_denorm * torch.tensor([0.5, 0.5, 0.5]).view(3,1,1) + torch.tensor([0.5, 0.5, 0.5]).view(3,1,1)
     img_denorm = torch.clamp(img_denorm, 0, 1)
     plt.imshow(np.transpose(img_denorm.numpy(), (1,2,0)))
     plt.axis('off')
@@ -351,11 +355,11 @@ for idx in range(n_samples):
     plt.axis('off')
 
 plt.tight_layout()
-# Save plots to comparison-models/eseunet directory
+# Save plots to comparison-models/dsu-net directory
 comparison_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 plots_dir = os.path.join(comparison_dir, "plots")
 os.makedirs(plots_dir, exist_ok=True)
-plt.savefig(os.path.join(plots_dir, 'eseunet_predictions_with_metrics_isic2018.png'), dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(plots_dir, 'dsunet_predictions_with_metrics_isic2018.png'), dpi=300, bbox_inches='tight')
 plt.show()
 
 print("\n" + "="*60)
