@@ -3,17 +3,17 @@ import numpy as np
 
 # DSU-Net Results from ISIC2017 and ISIC2018 evaluations
 isic2017_results = {
-    'mIoU': 82.37,
-    'DSC': 89.21,
-    'Sensitivity': 88.86,
-    'Specificity': 98.58
+    'mIoU': 84.04,
+    'DSC': 90.67,
+    'Sensitivity': 91.85,
+    'Specificity': 97.97
 }
 
 isic2018_results = {
-    'mIoU': 80.12,
-    'DSC': 87.60,
-    'Sensitivity': 87.14,
-    'Specificity': 97.55
+    'mIoU': 83.20,
+    'DSC': 90.11,
+    'Sensitivity': 91.59,
+    'Specificity': 97.49
 }
 
 # Create comparison plot
@@ -109,19 +109,19 @@ print("📊 Performance difference plot saved as 'dsunet_isic_performance_differ
 plt.show()
 
 # Create a comprehensive comparison with baseline models
-# ESEUNet results for comparison
-eseunet_isic2017 = {
-    'mIoU': 82.37,
-    'DSC': 89.21,
-    'Sensitivity': 88.86,
-    'Specificity': 98.58
+# DSU-Net results for comparison
+dsunet_isic2017 = {
+    'mIoU': 84.04,
+    'DSC': 90.67,
+    'Sensitivity': 91.85,
+    'Specificity': 97.97
 }
 
-eseunet_isic2018 = {
-    'mIoU': 80.12,
-    'DSC': 87.60,
-    'Sensitivity': 87.14,
-    'Specificity': 97.55
+dsunet_isic2018 = {
+    'mIoU': 83.20,
+    'DSC': 90.11,
+    'Sensitivity': 91.59,
+    'Specificity': 97.49
 }
 
 # MSGU-Net baseline for comparison
@@ -165,8 +165,8 @@ msgu_2017_avg = np.mean(list(msgu_isic2017.values()))
 msgu_2018_avg = np.mean(list(msgu_isic2018.values()))
 rg_2017_avg = np.mean(list(rg_isic2017.values()))
 rg_2018_avg = np.mean(list(rg_isic2018.values()))
-eseunet_2017_avg = np.mean(list(eseunet_isic2017.values())) if any(eseunet_isic2017.values()) else 0
-eseunet_2018_avg = np.mean(list(eseunet_isic2018.values())) if any(eseunet_isic2018.values()) else 0
+dsunet_2017_avg = np.mean(list(dsunet_isic2017.values()))
+dsunet_2018_avg = np.mean(list(dsunet_isic2018.values()))
 
 bars1 = ax3.bar(x_pos - 1.5*width, list(msgu_isic2017.values()), width, label='MSGU-Net (ISIC2017)', color='#3498DB', alpha=0.8)
 bars2 = ax3.bar(x_pos - 0.5*width, list(msgu_isic2018.values()), width, label='MSGU-Net (ISIC2018)', color='#5DADE2', alpha=0.8)
@@ -208,12 +208,8 @@ print(f"  MSGU-Net (ISIC2017):         {msgu_2017_avg:.2f}%")
 print(f"  MSGU-Net (ISIC2018):         {msgu_2018_avg:.2f}%")
 print(f"  RepGhostUNet (ISIC2017):     {rg_2017_avg:.2f}%")
 print(f"  RepGhostUNet (ISIC2018):     {rg_2018_avg:.2f}%")
-if eseunet_2017_avg > 0:
-    print(f"  ESEUNet (ISIC2017):          {eseunet_2017_avg:.2f}%")
-    print(f"  ESEUNet (ISIC2018):          {eseunet_2018_avg:.2f}%")
-else:
-    print(f"  ESEUNet (ISIC2017):          [Awaiting training results]")
-    print(f"  ESEUNet (ISIC2018):          [Awaiting training results]")
+print(f"  DSU-Net (ISIC2017):          {dsunet_2017_avg:.2f}%")
+print(f"  DSU-Net (ISIC2018):          {dsunet_2018_avg:.2f}%")
 
 print(f"\n🚀 RepGhostUNet Improvement over MSGU-Net:")
 print(f"  ISIC2017:  +{rg_2017_avg - msgu_2017_avg:.2f}% ({((rg_2017_avg / msgu_2017_avg - 1) * 100):.1f}% relative)")

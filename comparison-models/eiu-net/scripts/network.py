@@ -10,7 +10,15 @@ from blocks.MulScale_Att import MultiScaleAttention
 from blocks.scale_attention import scale_atten_convblock_softpool
 from blocks.reshape import reshaped
 
-from utils.init import *
+try:
+    from utils.init import *
+except ImportError:
+    try:
+        from .utils.init import *
+    except ImportError:
+        # Fallback if utils.init not available
+        def init_weights(m, init_type='kaiming'):
+            pass
 
 __all__ = ['EIU_Net']
 

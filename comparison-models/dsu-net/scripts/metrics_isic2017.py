@@ -221,7 +221,7 @@ def evaluate_model_metrics(model, test_loader, device):
     return avg_metrics
 
 
-base_dir_2017 = "/home/aminu_yusuf/msgunet/datasets/ISIC2017"
+base_dir_2017 = "/home/almaan/datasets/ISIC2017"
 
 # Training transforms with augmentation (using albumentations) - MUST MATCH train_isic2017.py
 transform_train = A.Compose([

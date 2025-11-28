@@ -2,19 +2,19 @@
     "ISIC2017": {
         "model": "DSU-Net",
         "dataset": "ISIC2017",
-        "mIoU": 82.37,
-        "DSC": 89.21,
-        "Sensitivity": 88.86,
-        "Specificity": 98.58,
-        "evaluation_date": "2025-11-21T13:29:49.402790"
+        "mIoU": 84.04,
+        "DSC": 90.67,
+        "Sensitivity": 91.85,
+        "Specificity": 97.97,
+        "evaluation_date": "2025-11-29T00:09:33.403908"
     },
     "ISIC2018": {
         "model": "DSU-Net",
         "dataset": "ISIC2018",
-        "mIoU": 80.12,
-        "DSC": 87.6,
-        "Sensitivity": 87.14,
-        "Specificity": 97.55,
-        "evaluation_date": "2025-11-21T13:29:49.402799"
+        "mIoU": 83.2,
+        "DSC": 90.11,
+        "Sensitivity": 91.59,
+        "Specificity": 97.49,
+        "evaluation_date": "2025-11-29T00:09:33.403919"
     }
 }

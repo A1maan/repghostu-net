@@ -8,19 +8,19 @@ results = {
     "ISIC2017": {
         "model": "DSU-Net",
         "dataset": "ISIC2017",
-        "mIoU": 82.37,
-        "DSC": 89.21,
-        "Sensitivity": 88.86,
-        "Specificity": 98.58,
+        "mIoU": 84.04,
+        "DSC": 90.67,
+        "Sensitivity": 91.85,
+        "Specificity": 97.97,
         "evaluation_date": datetime.now().isoformat()
     },
     "ISIC2018": {
         "model": "DSU-Net",
         "dataset": "ISIC2018",
-        "mIoU": 80.12,
-        "DSC": 87.60,
-        "Sensitivity": 87.14,
-        "Specificity": 97.55,
+        "mIoU": 83.20,
+        "DSC": 90.11,
+        "Sensitivity": 91.59,
+        "Specificity": 97.49,
         "evaluation_date": datetime.now().isoformat()
     }
 }

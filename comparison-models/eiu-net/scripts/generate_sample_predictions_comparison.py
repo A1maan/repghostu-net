@@ -11,11 +11,11 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
 # Add paths for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # dsu-net dir
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # eiu-net dir
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # current scripts dir
 
-# Import DSU-Net
-from DSU_Net import DSUNet
+# Import EIU-Net
+from network import EIU_Net
 
 # Set random seed
 SEED = 42
@@ -98,22 +98,22 @@ print(f"Using device: {device}")
 
 # Test transform - MUST MATCH training script
 transform_test = A.Compose([
-    A.Resize(224, 224),
-    A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+    A.Resize(224, 320),  # EIU-Net uses 224×320
+    A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0]),  # [0,1] normalization
     ToTensorV2()
 ])
 
 # Dataset paths - check common locations
 possible_paths_2017 = [
     "/home/almaan/datasets/ISIC2017",
-    "/home/aminu_yusuf/msgunet/datasets/ISIC2017",
-    "/home/almaan/ISIC2017"
+    # "/home/aminu_yusuf/msgunet/datasets/ISIC2017",
+    # "/home/almaan/ISIC2017"
 ]
 
 possible_paths_2018 = [
     "/home/almaan/datasets/ISIC2018",
-    "/home/aminu_yusuf/msgunet/datasets/ISIC2018",
-    "/home/almaan/ISIC2018"
+    # "/home/aminu_yusuf/msgunet/datasets/ISIC2018",
+    # "/home/almaan/ISIC2018"
 ]
 
 base_dir_2017 = None
@@ -163,34 +163,34 @@ print(f"ISIC2018 test set size: {len(test_dataset_2018)}")
 # ========================
 
 print("\nLoading models...")
-# DSU-Net
-print("Loading DSU-Net...")
-dsunet_model = DSUNet(
+# EIU-Net
+print("Loading EIU-Net...")
+eiuenet_model = EIU_Net(
     n_channels=3, 
     n_classes=1
 ).to(device)
-# Weights are in /comparison-models/dsu-net/weights/
+# Weights are in /comparison-models/eiu-net/weights/
 weights_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "weights")
-dsunet_2017_path = os.path.join(weights_dir, "best_dsunet_isic2017.pth")
-dsunet_2018_path = os.path.join(weights_dir, "best_dsunet_isic2018.pth")
+eiuenet_2017_path = os.path.join(weights_dir, "best_eiuenet_isic2017.pth")
+eiuenet_2018_path = os.path.join(weights_dir, "best_eiuenet_isic2018.pth")
 
 # Load weights if available
 models_loaded = True
-dsunet_model_2017 = None
-dsunet_model_2018 = None
+eiuenet_model_2017 = None
+eiuenet_model_2018 = None
 
 # Create separate models for each dataset
-dsunet_model_2017 = DSUNet(
+eiuenet_model_2017 = EIU_Net(
     n_channels=3, n_classes=1
 ).to(device)
 
-dsunet_model_2018 = DSUNet(
+eiuenet_model_2018 = EIU_Net(
     n_channels=3, n_classes=1
 ).to(device)
 
 for model_name, model, path in [
-    ("DSU-Net ISIC2017", dsunet_model_2017, dsunet_2017_path),
-    ("DSU-Net ISIC2018", dsunet_model_2018, dsunet_2018_path),
+    ("EIU-Net ISIC2017", eiuenet_model_2017, eiuenet_2017_path),
+    ("EIU-Net ISIC2018", eiuenet_model_2018, eiuenet_2018_path),
 ]:
     if os.path.exists(path):
         try:
@@ -217,11 +217,11 @@ def visualize_predictions(model, loader, dataset_name, save_prefix):
     imgs_batch, masks_batch = imgs_batch.to(device), masks_batch.to(device)
     
     with torch.no_grad():
-        outputs = model(imgs_batch)
-        # DSU-Net returns dict with 'out' and 'outs'
-        main_output = outputs['out']
-        # Output is already in [0, 1] range, threshold at 0.5 like training script
-        preds = (main_output > 0.5).float()
+        outputs = model(imgs_batch)  # EIU-Net outputs raw logits
+        # Apply sigmoid to convert logits to probabilities
+        probs = torch.sigmoid(outputs)
+        # Threshold at 0.5 to get binary predictions
+        preds = (probs > 0.5).float()
     
     n_samples = min(6, imgs_batch.shape[0])
     
@@ -233,9 +233,9 @@ def visualize_predictions(model, loader, dataset_name, save_prefix):
         mask_gt = masks_batch[idx, 0].cpu().numpy()
         pred = preds[idx, 0].cpu().numpy()  # Already thresholded to 0/1
         
-        # Denormalize image for display (using [0.5, 0.5, 0.5] normalization)
+        # Images are already normalized to [0, 1] range (mean=[0,0,0], std=[1,1,1])
+        # No denormalization needed, just transpose and clip
         img_np = np.transpose(img, (1, 2, 0))
-        img_np = (img_np * np.array([0.5, 0.5, 0.5])) + np.array([0.5, 0.5, 0.5])
         img_np = np.clip(img_np, 0, 1)
         
         # Binarize prediction (already binary after thresholding)
@@ -253,7 +253,7 @@ def visualize_predictions(model, loader, dataset_name, save_prefix):
         plt.title("Ground Truth", fontsize=10, fontweight='bold')
         plt.axis('off')
         
-        # 3. DSU-Net prediction
+        # 3. EIU-Net prediction
         plt.subplot(n_samples, 4, idx * 4 + 3)
         plt.imshow(pred, cmap='gray')
         plt.title("Prediction (Binary)", fontsize=10, fontweight='bold')
@@ -271,11 +271,11 @@ def visualize_predictions(model, loader, dataset_name, save_prefix):
         plt.title("Overlay\n(Red=Pred, Blue=GT, Magenta=Both)", fontsize=9, fontweight='bold')
         plt.axis('off')
     
-    plt.suptitle(f'DSU-Net Predictions vs Ground Truth - {dataset_name}', 
+    plt.suptitle(f'EIU-Net Predictions vs Ground Truth - {dataset_name}', 
                  fontsize=14, fontweight='bold', y=0.995)
     plt.tight_layout()
     
-    save_path = f"{save_prefix}_dsunet_predictions_vs_gt.png"
+    save_path = f"{save_prefix}_eiuenet_predictions_vs_gt.png"
     plt.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white')
     print(f"✅ Saved: {save_path}")
     plt.show()
@@ -291,8 +291,8 @@ print("="*70)
 
 print("\n📊 ISIC2017 Predictions vs Ground Truth...")
 try:
-    visualize_predictions(dsunet_model_2017, test_loader_2017, 
-                         "ISIC2017", "dsunet_isic2017")
+    visualize_predictions(eiuenet_model_2017, test_loader_2017, 
+                         "ISIC2017", "eiuenet_isic2017")
 except Exception as e:
     print(f"Error generating ISIC2017 visualizations: {e}")
     import traceback
@@ -300,8 +300,8 @@ except Exception as e:
 
 print("\n📊 ISIC2018 Predictions vs Ground Truth...")
 try:
-    visualize_predictions(dsunet_model_2018, test_loader_2018, 
-                         "ISIC2018", "dsunet_isic2018")
+    visualize_predictions(eiuenet_model_2018, test_loader_2018, 
+                         "ISIC2018", "eiuenet_isic2018")
 except Exception as e:
     print(f"Error generating ISIC2018 visualizations: {e}")
     import traceback

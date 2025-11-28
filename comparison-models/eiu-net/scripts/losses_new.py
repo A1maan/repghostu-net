@@ -200,6 +200,9 @@ class SoftDiceLoss_New(nn.Module):
 
         if self.apply_nonlin is not None:
             x = self.apply_nonlin(x)
+        
+        # Clamp to avoid numerical issues (especially important for sigmoid output)
+        x = torch.clamp(x, 1e-7, 1 - 1e-7)
 
         tp, fp, fn, _ = get_tp_fp_fn_tn(x, y, axes, loss_mask, False)
 
@@ -237,8 +240,8 @@ class Combined_Bce_Dice_Loss(nn.Module):
         dc_loss = self.dc(net_output, target)
 
         if self.aggregate == "sum":
-            result = 0.6 * ce_loss + 0.4 *dc_loss # 也可0.8+0.2的搭配
+            result = 0.6 * ce_loss + 0.4 * dc_loss
         else:
-            raise NotImplementedError("nah son")  # reserved for other stuff (later)
+            raise NotImplementedError("nah son")
 
         return result

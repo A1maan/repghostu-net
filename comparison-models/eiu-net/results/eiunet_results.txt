@@ -1,0 +1,24 @@
+============================================================
+EIU-Net Evaluation Results
+============================================================
+
+Dataset: ISIC2017
+Model: EIU-Net
+Evaluation Date: 2025-11-29T00:00:26.575931
+------------------------------------------------------------
+mIoU (Mean Intersection over Union): 82.51%
+DSC (Dice Similarity Coefficient):   89.28%
+Sensitivity (Recall):                90.25%
+Specificity:                         97.84%
+
+
+Dataset: ISIC2018
+Model: EIU-Net
+Evaluation Date: 2025-11-29T00:00:26.575941
+------------------------------------------------------------
+mIoU (Mean Intersection over Union): 81.60%
+DSC (Dice Similarity Coefficient):   88.83%
+Sensitivity (Recall):                90.27%
+Specificity:                         97.19%
+
+

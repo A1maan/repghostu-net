@@ -3,39 +3,39 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
 
-# Results for DSU-Net on ISIC2017 and ISIC2018
+# Results for EIU-Net on ISIC2017 and ISIC2018
 results = {
     "ISIC2017": {
-        "model": "DSU-Net",
+        "model": "EIU-Net",
         "dataset": "ISIC2017",
-        "mIoU": 82.37,
-        "DSC": 89.21,
-        "Sensitivity": 88.86,
-        "Specificity": 98.58,
+        "mIoU": 82.51,
+        "DSC": 89.28,
+        "Sensitivity": 90.25,
+        "Specificity": 97.84,
         "evaluation_date": datetime.now().isoformat()
     },
     "ISIC2018": {
-        "model": "DSU-Net",
+        "model": "EIU-Net",
         "dataset": "ISIC2018",
-        "mIoU": 80.12,
-        "DSC": 87.60,
-        "Sensitivity": 87.14,
-        "Specificity": 97.55,
+        "mIoU": 81.60,
+        "DSC": 88.83,
+        "Sensitivity": 90.27,
+        "Specificity": 97.19,
         "evaluation_date": datetime.now().isoformat()
     }
 }
 
 # Save results to JSON
-results_json_path = "dsunet_results.json"
+results_json_path = "eiunet_results.json"
 with open(results_json_path, 'w') as f:
     json.dump(results, f, indent=4)
 print(f"✅ Results saved to {results_json_path}")
 
 # Create a detailed text report
-report_path = "dsunet_results.txt"
+report_path = "eiunet_results.txt"
 with open(report_path, 'w') as f:
     f.write("=" * 60 + "\n")
-    f.write("DSU-Net Evaluation Results\n")
+    f.write("EIU-Net Evaluation Results\n")
     f.write("=" * 60 + "\n\n")
     
     for dataset_name, data in results.items():
@@ -68,7 +68,7 @@ for i, metric in enumerate(metrics_names):
     ax1.bar(x + i*width, values, width, label=metric, color=colors[i])
 
 ax1.set_ylabel('Score (%)', fontsize=12, fontweight='bold')
-ax1.set_title('DSU-Net: All Metrics Comparison', fontsize=14, fontweight='bold')
+ax1.set_title('EIU-Net: All Metrics Comparison', fontsize=14, fontweight='bold')
 ax1.set_xticks(x + 1.5*width)
 ax1.set_xticklabels(datasets, fontsize=11)
 ax1.legend(fontsize=10)
@@ -86,7 +86,7 @@ ax2 = plt.subplot(2, 2, 2)
 isic2017_metrics = [results['ISIC2017'][m] for m in metrics_names]
 bars2 = ax2.barh(metrics_names, isic2017_metrics, color=colors)
 ax2.set_xlabel('Score (%)', fontsize=12, fontweight='bold')
-ax2.set_title('DSU-Net on ISIC2017', fontsize=14, fontweight='bold')
+ax2.set_title('EIU-Net on ISIC2017', fontsize=14, fontweight='bold')
 ax2.set_xlim([70, 102])
 ax2.grid(axis='x', alpha=0.3)
 
@@ -99,7 +99,7 @@ ax3 = plt.subplot(2, 2, 3)
 isic2018_metrics = [results['ISIC2018'][m] for m in metrics_names]
 bars3 = ax3.barh(metrics_names, isic2018_metrics, color=colors)
 ax3.set_xlabel('Score (%)', fontsize=12, fontweight='bold')
-ax3.set_title('DSU-Net on ISIC2018', fontsize=14, fontweight='bold')
+ax3.set_title('EIU-Net on ISIC2018', fontsize=14, fontweight='bold')
 ax3.set_xlim([70, 102])
 ax3.grid(axis='x', alpha=0.3)
 
@@ -132,11 +132,11 @@ for bars in [bars_2017, bars_2018]:
         ax4.text(bar.get_x() + bar.get_width()/2., height + 0.5,
                 f'{height:.1f}%', ha='center', va='bottom', fontsize=9)
 
-plt.suptitle('DSU-Net Evaluation Results Summary', fontsize=16, fontweight='bold', y=0.995)
+plt.suptitle('EIU-Net Evaluation Results Summary', fontsize=16, fontweight='bold', y=0.995)
 plt.tight_layout()
 
 # Save the comprehensive plot
-plot_path = "dsunet_results_visualization.png"
+plot_path = "eiunet_results_visualization.png"
 plt.savefig(plot_path, dpi=300, bbox_inches='tight')
 print(f"✅ Comprehensive visualization saved to {plot_path}")
 plt.show()
@@ -188,15 +188,15 @@ for j in range(4):
     table[(len(table_data) - 1, j)].set_facecolor('#f39c12')
     table[(len(table_data) - 1, j)].set_text_props(weight='bold', color='white')
 
-plt.title('DSU-Net Performance Metrics - Detailed Comparison', 
+plt.title('EIU-Net Performance Metrics - Detailed Comparison', 
          fontsize=14, fontweight='bold', pad=20)
-plt.savefig('dsunet_results_table.png', dpi=300, bbox_inches='tight')
-print(f"✅ Results table saved to dsunet_results_table.png")
+plt.savefig('eiunet_results_table.png', dpi=300, bbox_inches='tight')
+print(f"✅ Results table saved to eiunet_results_table.png")
 plt.show()
 
 # Print summary to console
 print("\n" + "=" * 60)
-print("DSU-NET EVALUATION RESULTS SUMMARY")
+print("EIU-NET EVALUATION RESULTS SUMMARY")
 print("=" * 60)
 print("\n📊 ISIC2017 Results:")
 print(f"  • mIoU:        {results['ISIC2017']['mIoU']:.2f}%")

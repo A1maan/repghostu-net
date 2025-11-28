@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import models and loss functions
-from DSU_Net import DSUNet
+from network import EIU_Net
 
 from PIL import Image
 from tqdm import tqdm
@@ -23,18 +23,36 @@ import random
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-# Add train_utils to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'train_utils'))
 
-# Import evaluation metrics and loss function
-try:
-    from train_utils.distributed_utils import ConfusionMatrix
-    from train_utils.train_and_eval import criterion, create_lr_scheduler
-except ImportError as e:
-    print(f"Warning: Could not import from train_utils: {e}")
-    ConfusionMatrix = None
-    criterion = None
-    create_lr_scheduler = None
+# Custom implementation of Combined BCE + Dice Loss (0.6*BCE + 0.4*Dice)
+class CustomCombinedLoss(nn.Module):
+    def __init__(self, bce_weight=0.6, dice_weight=0.4):
+        super(CustomCombinedLoss, self).__init__()
+        self.bce_weight = bce_weight
+        self.dice_weight = dice_weight
+        self.bce_loss = nn.BCEWithLogitsLoss()
+    
+    def dice_loss(self, pred_logits, target):
+        """Dice loss for logits (applies sigmoid internally)"""
+        pred = torch.sigmoid(pred_logits)
+        smooth = 1e-5
+        
+        # Flatten predictions and targets
+        pred_flat = pred.view(-1)
+        target_flat = target.view(-1)
+        
+        # Calculate intersection and union
+        intersection = (pred_flat * target_flat).sum()
+        dice_score = (2. * intersection + smooth) / (pred_flat.sum() + target_flat.sum() + smooth)
+        
+        return 1 - dice_score
+    
+    def forward(self, pred_logits, target):
+        """Combined loss: 0.6*BCE + 0.4*Dice"""
+        bce = self.bce_loss(pred_logits, target)
+        dice = self.dice_loss(pred_logits, target)
+        return self.bce_weight * bce + self.dice_weight * dice
+
 
 # Set random seeds for reproducibility
 SEED = 42
@@ -125,32 +143,33 @@ class ISICSegmentationDataset(Dataset):
         if len(mask.shape) == 2:
             mask = mask.unsqueeze(0)  # [H, W] -> [1, H, W]
         
-        # Normalize mask to [0, 1] range if needed
+        # Convert to float and normalize to [0, 1] range
+        mask = mask.float()  # Convert from byte to float
         if mask.max() > 1.0:
             mask = mask / 255.0
         
         return img, mask
 
 
-base_dir_2018 = "/home/aminu_yusuf/msgunet/datasets/ISIC2018"
+base_dir_2018 = "/home/almaan/datasets/ISIC2018"
 
-# Training transforms with composite data augmentations
-# Includes: random flipping, rotation ±15°, brightness/contrast/hue adjustments (±3%)
+# Training transforms for EIU-Net
+# Input size: 224×320, pixel values scaled to [0, 1]
+# As specified in the EIU-Net paper
 transform_train = A.Compose([
-    A.Resize(224, 224),
-    A.HorizontalFlip(p=0.5),                              # Random horizontal flipping
-    A.VerticalFlip(p=0.5),                                # Random vertical flipping
-    A.Rotate(limit=15, p=0.5),                            # Rotation ±15 degrees
-    A.RandomBrightnessContrast(brightness_limit=0.03, contrast_limit=0.03, p=0.5),  # ±3% brightness/contrast
-    A.HueSaturationValue(hue_shift_limit=3, sat_shift_limit=3, val_shift_limit=3, p=0.5),  # ±3% hue/sat/val
-    A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),  # Normalize to [-1, 1]
+    A.Resize(224, 320),  # Resize to fixed size (don't crop - may lose lesions)
+    A.HorizontalFlip(p=0.5),
+    A.VerticalFlip(p=0.5),
+    A.Rotate(limit=30, p=0.5),  # Matches their degrees=30
+    A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0]),  # Scale to [0, 1] - just normalize to [0,1]
     ToTensorV2()
 ])
 
-# Test transforms (no augmentation)
+# Test transforms (no augmentation, just resize)
+# Matches their test_type behavior
 transform_test = A.Compose([
-    A.Resize(224, 224),
-    A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),  # Same normalization as training
+    A.Resize(224, 320),
+    A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0]),  # Scale to [0, 1]
     ToTensorV2()
 ])
 
@@ -161,8 +180,8 @@ test_dataset_2018 = ISICSegmentationDataset(
     base_dir=base_dir_2018, split="test", transform=transform_test, seed=SEED
 )
 
-train_loader_2018 = DataLoader(train_dataset_2018, batch_size=2, shuffle=True, drop_last=True, worker_init_fn=seed_worker)
-test_loader_2018 = DataLoader(test_dataset_2018, batch_size=2, shuffle=False, worker_init_fn=seed_worker)
+train_loader_2018 = DataLoader(train_dataset_2018, batch_size=8, shuffle=True, drop_last=True, worker_init_fn=seed_worker)
+test_loader_2018 = DataLoader(test_dataset_2018, batch_size=1, shuffle=False, worker_init_fn=seed_worker)
 
 print("Train size:", len(train_dataset_2018))
 print("Test size:", len(test_dataset_2018))
@@ -172,29 +191,31 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
 
 # Initialize DSU-Net
-model = DSUNet(
+model = EIU_Net(
     n_channels=3, 
     n_classes=1
 ).to(device)
 
-# AdamW optimizer with paper-specified hyperparameters
-optimizer = optim.AdamW(
+# Adam optimizer with EIU-Net specifications
+# Initial LR = 0.001, Weight decay = 0.0001
+optimizer = optim.Adam(
     model.parameters(), 
-    lr=1e-4,
-    betas=(0.9, 0.99),
-    weight_decay=5e-5
+    lr=1e-3,
+    weight_decay=1e-4
 )
 
-# Learning rate scheduler with warmup (official DSU-Net implementation)
-num_steps_per_epoch = len(train_loader_2018)
-if create_lr_scheduler is not None:
-    scheduler = create_lr_scheduler(optimizer, num_steps_per_epoch, epochs=50, warmup=True, warmup_epochs=1, warmup_factor=1e-3)
-else:
-    # Fallback: simple polynomial decay if import failed
-    def lr_lambda(step):
-        total_steps = 50 * num_steps_per_epoch
-        return (1 - step / total_steps) ** 0.9
-    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+# CosineAnnealingWarmRestarts scheduler (150 epochs total)
+# Matches their code: T_0=10, T_mult=2
+# Cycle 1: epochs 0-10, Cycle 2: 10-30, Cycle 3: 30-70, Cycle 4: 70-150
+scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+    optimizer,
+    T_0=10,   # First cycle is 10 epochs
+    T_mult=2,  # Each subsequent cycle doubles in length
+    eta_min=1e-6  # Minimum learning rate
+)
+
+# Initialize loss function (0.6*BCE + 0.4*Dice with logits) - custom implementation
+criterion = CustomCombinedLoss(bce_weight=0.6, dice_weight=0.4)
 
 
 def train_epoch(loader, model, criterion, optimizer, scheduler, device, epoch=None, n_epochs=None):
@@ -208,13 +229,15 @@ def train_epoch(loader, model, criterion, optimizer, scheduler, device, epoch=No
         imgs, masks = imgs.to(device), masks.to(device)
 
         optimizer.zero_grad()
-        outputs = model(imgs)  # DSU-Net returns dict with 'out' and 'outs'
-        loss = criterion(outputs, masks, num_classes=1)  # Pass full dict for two-stage loss
+        outputs = model(imgs)  # EIU-Net model outputs logits (no sigmoid)
+        
+        # Calculate BCE + Dice loss (loss function applies sigmoid internally)
+        loss = criterion(outputs, masks)
         loss.backward()
         optimizer.step()
         
         running_loss += loss.item()
-        progress_bar.set_postfix(loss=loss.item())  # live update of batch loss
+        progress_bar.set_postfix(loss=loss.item())
     
     # Update learning rate once per epoch (not per batch)
     scheduler.step()
@@ -225,73 +248,70 @@ def train_epoch(loader, model, criterion, optimizer, scheduler, device, epoch=No
 def eval_epoch(loader, model, criterion, device, epoch=None, n_epochs=None):
     model.eval()
     running_loss = 0.0
-    
-    # Initialize confusion matrix for comprehensive metrics
-    confmat = ConfusionMatrix(num_classes=1) if ConfusionMatrix else None
+    nan_count = 0
     
     with torch.no_grad():
         progress_bar = tqdm(loader, desc=f"Epoch {epoch+1}/{n_epochs} [Val]", leave=False)
         
-        for imgs, masks in progress_bar:
+        for batch_idx, (imgs, masks) in enumerate(progress_bar):
             imgs, masks = imgs.to(device), masks.to(device)
-            outputs = model(imgs)  # DSU-Net returns dict with 'out' and 'outs'
+            outputs = model(imgs)  # EIU-Net model outputs logits
             
-            # Calculate loss if criterion is available
-            if criterion is not None:
-                loss = criterion(outputs, masks, num_classes=1)  # Pass full dict for two-stage loss
-            else:
-                # Fallback: simple BCE loss if criterion import failed
-                loss = torch.nn.BCELoss()(outputs['out'], masks)
+            # Check for NaN in outputs
+            if torch.isnan(outputs).any():
+                print(f"\n⚠️  NaN in network outputs at batch {batch_idx}, replacing with zeros")
+                outputs = torch.nan_to_num(outputs, nan=0.0)  # Replace NaN with 0
+                nan_count += 1
+            
+            # Calculate BCE + Dice loss (loss function applies sigmoid internally)
+            loss = criterion(outputs, masks)
+            
+            # Check for NaN in loss
+            if torch.isnan(loss):
+                print(f"\n⚠️  NaN in loss at batch {batch_idx}")
+                print(f"Output range: [{outputs.min():.4f}, {outputs.max():.4f}]")
+                print(f"Mask range: [{masks.min():.4f}, {masks.max():.4f}]")
+                nan_count += 1
+                continue
             
             running_loss += loss.item()
-            
-            # Accumulate metrics for confusion matrix
-            if confmat is not None:
-                preds = (outputs['out'] > 0.5).float()  # Threshold predictions
-                confmat.update(masks, preds)
-            
             progress_bar.set_postfix(loss=loss.item())
     
-    avg_loss = running_loss / len(loader)
+    if nan_count > 0:
+        print(f"\n⚠️  Total NaN batches: {nan_count}/{len(loader)}")
     
-    # Compute and return evaluation metrics
-    if confmat is not None:
-        acc, sensitivity, specificity, iou, dice = confmat.compute()
-        return avg_loss, acc, sensitivity, specificity, iou, dice
-    
-    return avg_loss, None, None, None, None, None
+    avg_loss = running_loss / max(1, len(loader) - nan_count)
+    return avg_loss
 
 
 if __name__ == "__main__":
-    # ISIC2018 Training + Testing
+    # EIU-Net ISIC2018 Training + Testing
 
     # Get project root directory
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     weights_dir = os.path.join(project_root, "weights")
     os.makedirs(weights_dir, exist_ok=True)
 
-    n_epochs = 50  # DSU-Net paper uses 50 epochs
+    n_epochs = 150  # EIU-Net uses 150 epochs
     train_losses = []
     test_losses = []
 
     best_loss = float("inf")
-    best_model_path = os.path.join(weights_dir, "best_dsunet_isic2018.pth")
+    best_model_path = os.path.join(weights_dir, "best_eiuenet_isic2018.pth")
 
     for epoch in range(n_epochs):
         train_loss = train_epoch(train_loader_2018, model, criterion, optimizer, scheduler, device, epoch, n_epochs)
         train_losses.append(train_loss)
         
-        eval_results = eval_epoch(test_loader_2018, model, criterion, device, epoch, n_epochs)
-        test_loss = eval_results[0]
+        # Make sure model is set to eval mode before evaluating
+        model.eval()
+        test_loss = eval_epoch(test_loader_2018, model, criterion, device, epoch, n_epochs)
         test_losses.append(test_loss)
         
-        # Display metrics
-        if len(eval_results) == 6:
-            _, acc, sensitivity, specificity, iou, dice = eval_results
-            print(f"Epoch {epoch+1}/{n_epochs} - Train Loss: {train_loss:.4f} - Test Loss: {test_loss:.4f}")
-            print(f"  Metrics - ACC: {acc*100:.2f}% | SE: {sensitivity*100:.2f}% | SP: {specificity*100:.2f}% | IoU: {iou*100:.2f}% | Dice: {dice*100:.2f}%")
-        else:
-            print(f"Epoch {epoch+1}/{n_epochs} - Train Loss: {train_loss:.4f} - Test Loss: {test_loss:.4f}")
+        # Switch back to train mode for next epoch
+        model.train()
+        
+        print(f"Epoch {epoch+1}/{n_epochs} - Train Loss: {train_loss:.4f} - Test Loss: {test_loss:.4f}")
         
         # Save best model
         if test_loss < best_loss:
@@ -300,7 +320,7 @@ if __name__ == "__main__":
             print(f"✅ Saved best model at epoch {epoch+1} with Test Loss: {test_loss:.4f}")
 
     # Optionally save final model too
-    final_model_path = os.path.join(weights_dir, "dsunet_isic2018.pth")
+    final_model_path = os.path.join(weights_dir, "eiuenet_isic2018.pth")
     torch.save(model.state_dict(), final_model_path)
     print("💾 Training complete, final model saved.")
 
@@ -308,8 +328,8 @@ if __name__ == "__main__":
     imgs, masks = next(iter(test_loader_2018))
     imgs, masks = imgs.to(device), masks.to(device)
     with torch.no_grad():
-        outputs = model(imgs)  # Returns dict with 'out' and 'outs'
-        preds = (outputs['out'] > 0.5).float()  # Threshold predictions to binary
+        outputs = model(imgs)  # EIU-Net returns logits
+        preds = (torch.sigmoid(outputs) > 0.5).float()  # Apply sigmoid then threshold
 
     n_samples = min(6, imgs.shape[0])
     plt.figure(figsize=(12, n_samples * 3))
@@ -326,14 +346,14 @@ if __name__ == "__main__":
         plt.axis('off')
         # Prediction
         plt.subplot(n_samples, 3, idx * 3 + 3)
-        plt.title("DSU-Net Prediction")
+        plt.title("EIU-Net Prediction")
         plt.imshow(preds[idx,0].cpu().numpy(), cmap="gray")
         plt.axis('off')
 
     plt.tight_layout()
     plots_dir = os.path.join(project_root, "plots")
     os.makedirs(plots_dir, exist_ok=True)
-    plt.savefig(os.path.join(plots_dir, 'dsunet_predictions_grid_isic2018.png'))
+    plt.savefig(os.path.join(plots_dir, 'eiuenet_predictions_grid_isic2018.png'))
     plt.show()
 
     # After training cell (after training loop and model saving)
@@ -342,10 +362,10 @@ if __name__ == "__main__":
     plt.plot(test_losses, label="Test Loss")
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.title("DSU-Net - Loss Curve (ISIC2018)")
+    plt.title("EIU-Net - Loss Curve (ISIC2018)")
     plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(plots_dir, 'dsunet_loss_curve_isic2018.png'))
+    plt.savefig(os.path.join(plots_dir, 'eiuenet_loss_curve_isic2018.png'))
     plt.show()
 
 

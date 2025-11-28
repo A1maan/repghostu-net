@@ -9,11 +9,11 @@ import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import DSU-Net
+# Add parent directory to path to import EIU-Net
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import DSU-Net model
-from DSU_Net import DSUNet
+# Import EIU-Net model
+from network import EIU_Net
 
 from PIL import Image
 from tqdm import tqdm
@@ -191,13 +191,11 @@ def evaluate_model_metrics(model, test_loader, device):
         for imgs, masks in progress_bar:
             imgs, masks = imgs.to(device), masks.to(device)
             
-            # Get predictions from DSU-Net (returns dict with 'out' and 'outs')
-            outputs = model(imgs)
-            # Use main output for metrics calculation
-            main_output = outputs['out']  # Shape: [B, 1, H, W]
+            # Get predictions from EIU-Net (outputs raw logits)
+            outputs = model(imgs)  # Shape: [B, 1, H, W]
             
-            # DSU-Net outputs are already in [0, 1] range, just threshold at 0.5 like training script
-            predictions = main_output  # Keep raw output for metric calculation
+            # EIU-Net outputs raw logits, apply sigmoid to get [0, 1] range
+            predictions = torch.sigmoid(outputs)  # Convert logits to probabilities
             
             # Calculate metrics for each sample in the batch
             for i in range(imgs.shape[0]):
@@ -221,24 +219,22 @@ def evaluate_model_metrics(model, test_loader, device):
     return avg_metrics
 
 
-base_dir_2017 = "/home/aminu_yusuf/msgunet/datasets/ISIC2017"
+base_dir_2017 = "/home/almaan/datasets/ISIC2017"
 
 # Training transforms with augmentation (using albumentations) - MUST MATCH train_isic2017.py
 transform_train = A.Compose([
-    A.Resize(224, 224),
+    A.RandomCrop(224, 320, p=1.0),                        # Random crop to 224×320
     A.HorizontalFlip(p=0.5),                              # Random horizontal flipping
     A.VerticalFlip(p=0.5),                                # Random vertical flipping
-    A.Rotate(limit=15, p=0.5),                            # Rotation ±15 degrees
-    A.RandomBrightnessContrast(brightness_limit=0.03, contrast_limit=0.03, p=0.5),  # ±3% brightness/contrast
-    A.HueSaturationValue(hue_shift_limit=3, sat_shift_limit=3, val_shift_limit=3, p=0.5),  # ±3% hue/sat/val
-    A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),  # Normalize to [-1, 1]
+    A.Rotate(limit=30, p=0.5),                            # Rotation ±30 degrees
+    A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0]),  # Normalize to [0, 1]
     ToTensorV2()
 ])
 
 # Test transforms (no augmentation - deterministic only)
 transform_test = A.Compose([
-    A.Resize(224, 224),
-    A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),  # Same normalization as training
+    A.Resize(224, 320),                                   # Resize to 224×320
+    A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0]),  # Same normalization as training
     ToTensorV2()
 ])
 
@@ -259,15 +255,15 @@ print("Test size:", len(test_dataset_2017))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
 
-# Initialize DSU-Net model
-model = DSUNet(
+# Initialize EIU-Net model
+model = EIU_Net(
     n_channels=3, 
     n_classes=1
 ).to(device)
 
-# Load pretrained weights (weights are in comparison-models/dsu-net/weights/)
+# Load pretrained weights (weights are in comparison-models/eiu-net/weights/)
 weights_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "weights")
-pretrained_weights_path = os.path.join(weights_dir, "best_dsunet_isic2017.pth")
+pretrained_weights_path = os.path.join(weights_dir, "best_eiuenet_isic2017.pth")
 if os.path.exists(pretrained_weights_path):
     print(f"Loading pretrained weights from: {pretrained_weights_path}")
     state_dict = torch.load(pretrained_weights_path, map_location=device)
@@ -304,7 +300,7 @@ print("=" * 50)
 
 # ISIC2017 Inference and Metrics Evaluation
 # 
-# This script loads a pretrained RepGhost U-Net model and evaluates it on the ISIC2017 test dataset to calculate:
+# This script loads a pretrained EIU-Net model and evaluates it on the ISIC2017 test dataset to calculate:
 # - **mIoU (Mean Intersection over Union)**: Measures overlap between predicted and ground truth masks
 # - **DSC (Dice Similarity Coefficient)**: Measures similarity between predicted and ground truth masks  
 # - **Sensitivity (Recall)**: True positive rate - ability to correctly identify positive pixels
@@ -319,11 +315,11 @@ imgs, masks = next(iter(test_loader_2017))
 imgs, masks = imgs.to(device), masks.to(device)
 
 with torch.no_grad():
-    outputs = model(imgs)
-    # DSU-Net returns dict with 'out' key
-    main_output = outputs['out']
-    # Output is already in [0, 1] range, threshold at 0.5 like training script
-    preds = (main_output > 0.5).float()
+    outputs = model(imgs)  # EIU-Net outputs raw logits
+    # Apply sigmoid to convert logits to probabilities
+    probs = torch.sigmoid(outputs)
+    # Threshold at 0.5 to get binary predictions
+    preds = (probs > 0.5).float()
 
 n_samples = min(6, imgs.shape[0])
 plt.figure(figsize=(15, n_samples * 3))
@@ -335,11 +331,10 @@ for idx in range(n_samples):
     # Original image
     plt.subplot(n_samples, 3, idx * 3 + 1)
     plt.title(f"Image {idx+1}")
-    # Denormalize image for display (using [0.5, 0.5, 0.5] normalization)
-    img_denorm = imgs[idx].cpu()
-    img_denorm = img_denorm * torch.tensor([0.5, 0.5, 0.5]).view(3,1,1) + torch.tensor([0.5, 0.5, 0.5]).view(3,1,1)
-    img_denorm = torch.clamp(img_denorm, 0, 1)
-    plt.imshow(np.transpose(img_denorm.numpy(), (1,2,0)))
+    # Images are already normalized to [0, 1] range (mean=[0,0,0], std=[1,1,1])
+    # No denormalization needed, just clamp to [0, 1] for display
+    img_display = torch.clamp(imgs[idx].cpu(), 0, 1)
+    plt.imshow(np.transpose(img_display.numpy(), (1,2,0)))
     plt.axis('off')
     
     # Ground truth mask
@@ -355,11 +350,11 @@ for idx in range(n_samples):
     plt.axis('off')
 
 plt.tight_layout()
-# Save plots to comparison-models/dsu-net directory
+# Save plots to comparison-models/eiu-net directory
 comparison_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 plots_dir = os.path.join(comparison_dir, "plots")
 os.makedirs(plots_dir, exist_ok=True)
-plt.savefig(os.path.join(plots_dir, 'dsunet_predictions_with_metrics_isic2017.png'), dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(plots_dir, 'eiuenet_predictions_with_metrics_isic2017.png'), dpi=300, bbox_inches='tight')
 plt.show()
 
 print("\n" + "="*60)
