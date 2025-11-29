@@ -2,3 +2,9 @@ __pycache__
 *.pyc
 .DS_Store
 weights/
+.vscode/
+env/
+.idea/
+*.log
+*.sqlite3
+*.env
