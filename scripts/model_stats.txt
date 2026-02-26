@@ -1,0 +1,8 @@
+model: RepGhostUNet
+input_shape: (1, 3, 64, 64)
+device: cpu
+deploy_mode: False
+total_params: 1591537
+trainable_params: 1591537
+gflops_single_forward: 0.184828
+
