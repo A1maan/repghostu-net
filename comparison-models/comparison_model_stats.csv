@@ -1,6 +1,6 @@
 model_key,model_class,source_file,input_shape,device,status,total_params,trainable_params,gflops_single_forward,error
-dsu_net,DSUNet,/Users/almaan/Desktop/repghostu-net/comparison-models/dsu-net/DSU_Net.py,"(1, 3, 64, 64)",cpu,error,,,,No module named 'timm'
-eiu_net,EIU_Net,/Users/almaan/Desktop/repghostu-net/comparison-models/eiu-net/scripts/network.py,"(1, 3, 224, 320)",cpu,ok,14156075,14156075,32.832153,
-eseunet,ESEUNet,/Users/almaan/Desktop/repghostu-net/comparison-models/eseunet/ESEUNet.py,"(1, 3, 64, 64)",cpu,error,,,,No module named 'einops'
-mucm_net,MUCM_Net,/Users/almaan/Desktop/repghostu-net/comparison-models/mucm-net/archs_mucm_dev.py,"(1, 3, 64, 64)",cpu,error,,,,No module named 'torchprofile'
-ultralight_vm_unet,UltraLight_VM_UNet,/Users/almaan/Desktop/repghostu-net/comparison-models/ultralight-vm-unet/UltraLight_VM_UNet.py,"(1, 3, 64, 64)",cpu,error,,,,No module named 'timm'
+dsu_net,DSUNet,/home/almaan/repghostu-net/comparison-models/dsu-net/DSU_Net.py,"(1, 3, 224, 224)",cuda,ok,35688458,35688458,17.659127,
+eiu_net,EIU_Net,/home/almaan/repghostu-net/comparison-models/eiu-net/scripts/network.py,"(1, 3, 224, 320)",cuda,ok,14156075,14156075,32.832153,
+eseunet,ESEUNet,/home/almaan/repghostu-net/comparison-models/eseunet/ESEUNet.py,"(1, 3, 256, 256)",cuda,ok,29923,29923,1.067274,
+mucm_net,MUCM_Net,/home/almaan/repghostu-net/comparison-models/mucm-net/archs_mucm_dev.py,"(1, 3, 256, 256)",cuda,ok,138652,138652,0.161674,
+ultralight_vm_unet,UltraLight_VM_UNet,/home/almaan/repghostu-net/comparison-models/ultralight-vm-unet/UltraLight_VM_UNet.py,"(1, 3, 256, 256)",cuda,ok,49457,49457,0.132174,

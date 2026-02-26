@@ -9,30 +9,35 @@ import torch
 from torch.profiler import ProfilerActivity, profile
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+COMPARISON_ROOT = PROJECT_ROOT / "comparison-models"
+
 MODEL_SPECS = {
     "dsu_net": {
-        "file": "/Users/almaan/Desktop/repghostu-net/comparison-models/dsu-net/DSU_Net.py",
+        "file": str(COMPARISON_ROOT / "dsu-net" / "DSU_Net.py"),
         "class": "DSUNet",
         "kwargs_builder": lambda a: {"n_channels": a.in_channels, "n_classes": a.num_classes},
+        "input_hw": (224, 224),
     },
     "eiu_net": {
-        "file": "/Users/almaan/Desktop/repghostu-net/comparison-models/eiu-net/scripts/network.py",
+        "file": str(COMPARISON_ROOT / "eiu-net" / "scripts" / "network.py"),
         "class": "EIU_Net",
         "kwargs_builder": lambda a: {"n_channels": a.in_channels, "n_classes": a.num_classes},
         "input_hw": (224, 320),
     },
     "eseunet": {
-        "file": "/Users/almaan/Desktop/repghostu-net/comparison-models/eseunet/ESEUNet.py",
+        "file": str(COMPARISON_ROOT / "eseunet" / "ESEUNet.py"),
         "class": "ESEUNet",
         "kwargs_builder": lambda a: {"img_channels": a.in_channels, "out_channels": a.num_classes},
     },
     "mucm_net": {
-        "file": "/Users/almaan/Desktop/repghostu-net/comparison-models/mucm-net/archs_mucm_dev.py",
+        "file": str(COMPARISON_ROOT / "mucm-net" / "archs_mucm_dev.py"),
         "class": "MUCM_Net",
         "kwargs_builder": lambda a: {"num_classes": a.num_classes, "input_channels": a.in_channels, "img_size": a.height},
+        "input_hw": (256, 256),
     },
     "ultralight_vm_unet": {
-        "file": "/Users/almaan/Desktop/repghostu-net/comparison-models/ultralight-vm-unet/UltraLight_VM_UNet.py",
+        "file": str(COMPARISON_ROOT / "ultralight-vm-unet" / "UltraLight_VM_UNet.py"),
         "class": "UltraLight_VM_UNet",
         "kwargs_builder": lambda a: {"num_classes": a.num_classes, "input_channels": a.in_channels},
     },
@@ -127,6 +132,9 @@ def patch_dsu_swin(module: Any) -> None:
 def run_one(model_key: str, args: argparse.Namespace) -> dict[str, Any]:
     spec = MODEL_SPECS[model_key]
     model_height, model_width = spec.get("input_hw", (args.height, args.width))
+    model_args = argparse.Namespace(**vars(args))
+    model_args.height = model_height
+    model_args.width = model_width
     input_shape = (args.batch_size, args.in_channels, model_height, model_width)
     row = {
         "model_key": model_key,
@@ -147,7 +155,7 @@ def run_one(model_key: str, args: argparse.Namespace) -> dict[str, Any]:
             patch_dsu_swin(module)
 
         model_cls = getattr(module, spec["class"])
-        model = model_cls(**spec["kwargs_builder"](args)).to(torch.device(args.device))
+        model = model_cls(**spec["kwargs_builder"](model_args)).to(torch.device(args.device))
         x = torch.randn(*input_shape, device=torch.device(args.device))
 
         total_params, trainable_params = count_params(model)
@@ -157,8 +165,23 @@ def run_one(model_key: str, args: argparse.Namespace) -> dict[str, Any]:
         row["trainable_params"] = trainable_params
         row["gflops_single_forward"] = round(gflops, 6)
     except Exception as e:
-        row["status"] = "error"
-        row["error"] = str(e).replace("\n", " ")
+        err = str(e).replace("\n", " ")
+
+        # mamba_ssm currently requires CUDA for forward in this environment.
+        # Keep parameter counts when available and mark profile as partial.
+        if "Expected x.is_cuda() to be true" in err:
+            try:
+                if "model" in locals():
+                    total_params, trainable_params = count_params(model)
+                    row["total_params"] = total_params
+                    row["trainable_params"] = trainable_params
+            except Exception:
+                pass
+            row["status"] = "partial"
+            row["error"] = "GFLOPs not computed on CPU: this model requires CUDA for mamba_ssm forward."
+        else:
+            row["status"] = "error"
+            row["error"] = err
 
     return row
 
@@ -172,7 +195,7 @@ def main() -> None:
     parser.add_argument("--in-channels", type=int, default=3)
     parser.add_argument("--num-classes", type=int, default=1)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
-    parser.add_argument("--output", type=str, default="/Users/almaan/Desktop/repghostu-net/comparison-models/comparison_model_stats.csv")
+    parser.add_argument("--output", type=str, default=str(COMPARISON_ROOT / "comparison_model_stats.csv"))
     args = parser.parse_args()
 
     if args.models.strip().lower() == "all":
